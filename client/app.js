@@ -99,6 +99,9 @@ function renderLayout(frames, historyMap) {
     metrics.className = "metrics";
     metrics.textContent = `w=${frame.weight.toFixed(2)} // ${frame.rect.width.toFixed(2)}×${frame.rect.height.toFixed(2)}`;
 
+    const divider = document.createElement("div");
+    divider.className = "divider";
+
     const messagesContainer = document.createElement("div");
     messagesContainer.className = "messages";
     const messages = historyMap.get(channel) || [];
@@ -108,21 +111,20 @@ function renderLayout(frames, historyMap) {
       placeholder.textContent = "No messages yet.";
       messagesContainer.appendChild(placeholder);
     } else {
-      messages.slice(0, 3).forEach((message) => {
-        const snippet = document.createElement("div");
-        snippet.className = "snippet";
-        snippet.dataset.severity = message.severity;
-        const time = document.createElement("time");
-        time.dateTime = message.received_at;
-        time.textContent = new Date(message.received_at).toLocaleTimeString();
-        const content = document.createElement("div");
-        content.textContent = message.payload;
-        snippet.append(time, content);
-        messagesContainer.appendChild(snippet);
-      });
+      const latest = messages[messages.length - 1];
+      const snippet = document.createElement("div");
+      snippet.className = "snippet";
+      snippet.dataset.severity = latest.severity;
+      const time = document.createElement("time");
+      time.dateTime = latest.received_at;
+      time.textContent = new Date(latest.received_at).toLocaleTimeString();
+      const content = document.createElement("div");
+      content.textContent = latest.payload;
+      snippet.append(time, content);
+      messagesContainer.appendChild(snippet);
     }
 
-    cell.append(header, metrics, messagesContainer);
+    cell.append(header, metrics, divider, messagesContainer);
     layoutStage.appendChild(cell);
   });
 }

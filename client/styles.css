@@ -66,108 +66,99 @@ body {
 }
 
 .app-main {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem;
   flex: 1;
-}
-
-.layout-panel {
-  background: var(--tokyo-panel);
-  border: 1px solid rgba(122, 162, 247, 0.15);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.layout-panel h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--tokyo-accent);
+  padding: 1.5rem;
 }
 
 .layout-stage {
   position: relative;
   width: 100%;
-  height: 75vh;
-  border: 1px solid rgba(122, 162, 247, 0.2);
-  border-radius: 0.75rem;
-  background: rgba(26, 27, 38, 0.6);
+  min-height: 60vh;
+  height: calc(100vh - 160px);
+  border-radius: 0.9rem;
+  background: var(--tokyo-panel);
   overflow: hidden;
+  border: 1px solid rgba(122, 162, 247, 0.2);
 }
 
 .layout-cell {
   position: absolute;
   border: 1px solid rgba(122, 162, 247, 0.35);
-  border-radius: 0.45rem;
+  border-radius: 0.6rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 0.25rem;
-  padding: 0.4rem 0.5rem;
-  background: rgba(122, 162, 247, 0.1);
+  background: rgba(17, 18, 26, 0.75);
   transition: border-color 0.2s ease, background 0.2s ease;
   cursor: pointer;
 }
 
 .layout-cell:hover {
   border-color: var(--tokyo-accent);
-  background: rgba(122, 162, 247, 0.2);
+  background: rgba(26, 27, 38, 0.85);
 }
 
 .layout-cell.selected {
   border-color: var(--tokyo-accent);
-  background: rgba(122, 162, 247, 0.28);
+  background: rgba(26, 27, 38, 0.9);
 }
 
 .layout-cell header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  padding: 0.45rem 0.6rem 0.35rem;
 }
 
 .layout-cell .path {
   color: var(--tokyo-accent);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .layout-cell .state {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--tokyo-muted);
   text-transform: uppercase;
 }
 
 .layout-cell .metrics {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--tokyo-muted);
+  padding: 0 0.6rem 0.3rem;
+}
+
+.layout-cell .divider {
+  height: 1px;
+  margin: 0 0.6rem;
+  background: rgba(122, 162, 247, 0.25);
 }
 
 .layout-cell .messages {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem 0.6rem;
 }
 
 .layout-cell .snippet {
-  background: rgba(26, 27, 38, 0.4);
-  border-radius: 0.35rem;
-  padding: 0.25rem 0.35rem;
-  font-size: 0.68rem;
+  background: rgba(36, 40, 59, 0.82);
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.74rem;
   color: var(--tokyo-text);
-  line-height: 1.2;
-  max-height: 4.5rem;
+  line-height: 1.3;
+  max-height: 6.5rem;
   overflow: hidden;
 }
 
 .layout-cell .snippet time {
   display: block;
   color: var(--tokyo-muted);
-  font-size: 0.6rem;
+  font-size: 0.62rem;
+  margin-bottom: 0.15rem;
 }
 
 .layout-cell.state-fading {
