@@ -1,3 +1,15 @@
+const params = new URLSearchParams(window.location.search);
+
+if (params.has("api")) {
+  window.localStorage.setItem("tree-signal.api", params.get("api"));
+}
+if (params.has("apiKey")) {
+  window.localStorage.setItem("tree-signal.apiKey", params.get("apiKey"));
+}
+if (params.has("refresh")) {
+  window.localStorage.setItem("tree-signal.refreshMs", params.get("refresh"));
+}
+
 const API_BASE = window.localStorage.getItem("tree-signal.api") || "http://localhost:8000";
 const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
 const REFRESH_INTERVAL_MS = Number(window.localStorage.getItem("tree-signal.refreshMs") || "5000");
