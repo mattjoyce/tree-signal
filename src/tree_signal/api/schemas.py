@@ -1,10 +1,10 @@
-"""API schemas for message and layout endpoints."""
+"""API schemas for message, layout, and control endpoints."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from tree_signal.core import LayoutFrame, LayoutRect, Message, PanelState
 
@@ -76,10 +76,38 @@ class LayoutFrameResponse(BaseModel):
         )
 
 
+class DecayConfig(BaseModel):
+    """Request payload for adjusting decay timing."""
+
+    hold_seconds: float = Field(..., gt=0, description="Duration to hold full weight before decay begins")
+    decay_seconds: float = Field(..., gt=0, description="Duration to fade from full weight to removal")
+
+    @model_validator(mode="after")
+    def validate_durations(self) -> "DecayConfig":
+        if self.decay_seconds < 0.1:
+            raise ValueError("decay_seconds must be at least 0.1 seconds")
+        return self
+
+    def to_timedelta(self) -> Tuple[timedelta, timedelta]:
+        return timedelta(seconds=self.hold_seconds), timedelta(seconds=self.decay_seconds)
+
+
+class DecayConfigResponse(BaseModel):
+    hold_seconds: float
+    decay_seconds: float
+
+
+class PruneRequest(BaseModel):
+    channel: str
+
+
 __all__ = [
+    "DecayConfig",
+    "DecayConfigResponse",
     "LayoutFrameResponse",
     "LayoutRectModel",
     "MessageIngress",
     "MessageIngressResponse",
     "MessageRecord",
+    "PruneRequest",
 ]

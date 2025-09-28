@@ -6,16 +6,19 @@ from typing import List
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from tree_signal.core import ChannelTreeService, Message, MessageSeverity
 from tree_signal.layout import LinearLayoutGenerator
 
 from .schemas import (
+    DecayConfig,
+    DecayConfigResponse,
     LayoutFrameResponse,
     MessageIngress,
     MessageIngressResponse,
     MessageRecord,
+    PruneRequest,
 )
 
 app = FastAPI(title="Tree Signal", version="0.1.0")
@@ -88,6 +91,26 @@ async def list_messages(channel: str) -> List[MessageRecord]:
     tree_service = get_tree_service()
     history = tree_service.get_history(segments)
     return [MessageRecord.from_domain(msg) for msg in history]
+
+
+@app.post("/v1/control/decay", response_model=DecayConfigResponse)
+async def update_decay(config: DecayConfig) -> DecayConfigResponse:
+    """Update decay configuration for the channel tree."""
+
+    tree_service = get_tree_service()
+    hold, decay = config.to_timedelta()
+    tree_service.configure_decay(hold=hold, decay=decay)
+    return DecayConfigResponse(hold_seconds=config.hold_seconds, decay_seconds=config.decay_seconds)
+
+
+@app.post("/v1/control/prune", status_code=204, response_class=Response)
+async def prune_channel(request: PruneRequest) -> Response:
+    """Remove a channel subtree."""
+
+    segments = _parse_channel(request.channel)
+    tree_service = get_tree_service()
+    tree_service.prune(segments)
+    return Response(status_code=204)
 
 
 @app.get("/v1/layout", response_model=List[LayoutFrameResponse])
