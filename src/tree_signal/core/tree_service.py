@@ -46,12 +46,22 @@ class ChannelTreeService:
     def iter_nodes(self) -> Iterable[ChannelNodeState]:
         """Yield nodes in depth-first order for layout calculations."""
 
-        raise NotImplementedError("Node iteration not implemented yet")
+        stack: list[ChannelNodeState] = [self._root]
+        while stack:
+            node = stack.pop()
+            yield node
+            stack.extend(reversed(list(node.children.values())))
 
     def get_node(self, path: ChannelPath) -> Optional[ChannelNodeState]:
         """Return the node at the requested path if it exists."""
 
-        raise NotImplementedError("Node lookup not implemented yet")
+        node = self._root
+        for segment in path:
+            try:
+                node = node.children[segment]
+            except KeyError:
+                return None
+        return node
 
     def _ensure_child(self, node: ChannelNodeState, segment: str) -> ChannelNodeState:
         """Fetch or create a child node for the given segment."""

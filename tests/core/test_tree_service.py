@@ -1,7 +1,9 @@
 from datetime import datetime
 
+import pytest
+
 from tree_signal.core import ChannelTreeService
-from tree_signal.core.models import Message, MessageSeverity
+from tree_signal.core.models import ChannelNodeState, Message, MessageSeverity
 
 
 def _message(path: tuple[str, ...]) -> Message:
@@ -55,3 +57,35 @@ def test_ingest_accumulates_weight_for_existing_nodes() -> None:
     assert beta.weight == 2.0
     assert service.root.weight == 2.0
     assert beta.last_message_at == second.received_at
+
+
+def test_get_node_returns_existing_node() -> None:
+    service = ChannelTreeService()
+    message = _message(("alpha", "beta", "gamma"))
+    service.ingest(message)
+
+    node = service.get_node(("alpha", "beta"))
+
+    assert isinstance(node, ChannelNodeState)
+    assert node.path == ("alpha", "beta")
+
+
+def test_get_node_returns_none_for_missing_path() -> None:
+    service = ChannelTreeService()
+
+    assert service.get_node(("missing",)) is None
+
+
+def test_iter_nodes_traverses_depth_first() -> None:
+    service = ChannelTreeService()
+    service.ingest(_message(("alpha", "beta")))
+    service.ingest(_message(("alpha", "gamma")))
+    service.ingest(_message(("delta",)))
+
+    paths = [node.path for node in service.iter_nodes()]
+
+    assert paths[0] == ()
+    assert ("alpha",) in paths
+    assert ("alpha", "beta") in paths
+    assert ("alpha", "gamma") in paths
+    assert ("delta",) in paths
