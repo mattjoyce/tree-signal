@@ -52,15 +52,20 @@ class LinearLayoutGenerator:
             return
 
         orientation_horizontal = depth % 2 == 0
-        total_weight = sum(max(child.weight, 0.0) for child in children)
+        if depth == 0:
+            weights = [1.0 for _ in children]
+        else:
+            weights = [max(child.weight, 0.0) for child in children]
+
+        total_weight = sum(weights)
         if total_weight <= 0:
             total_weight = float(len(children))
 
         remaining = 1.0
         cursor = rect.x if orientation_horizontal else rect.y
 
-        for index, child in enumerate(children):
-            raw_fraction = max(child.weight, 0.0) / total_weight if total_weight else 0.0
+        for index, (child, weight) in enumerate(zip(children, weights)):
+            raw_fraction = weight / total_weight if total_weight else 0.0
             fraction = max(raw_fraction, self._min_extent)
 
             if index == len(children) - 1:
