@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -6,13 +6,14 @@ from tree_signal.core import ChannelTreeService
 from tree_signal.core.models import ChannelNodeState, Message, MessageSeverity
 
 
-def _message(path: tuple[str, ...]) -> Message:
+def _message(path: tuple[str, ...], *, at: datetime) -> Message:
     return Message(
         id="test",
         channel_path=path,
         payload="hello",
-        received_at=datetime.now(),
+        received_at=at,
         severity=MessageSeverity.INFO,
+        metadata=None,
     )
 
 
@@ -26,7 +27,8 @@ def test_tree_service_initialises_with_synthetic_root() -> None:
 
 def test_ingest_creates_nodes_and_updates_weights() -> None:
     service = ChannelTreeService()
-    message = _message(("alpha", "beta"))
+    now = datetime.now(tz=timezone.utc)
+    message = _message(("alpha", "beta"), at=now)
 
     service.ingest(message)
 
@@ -44,8 +46,8 @@ def test_ingest_accumulates_weight_for_existing_nodes() -> None:
     service = ChannelTreeService()
     path = ("alpha", "beta")
 
-    first = _message(path)
-    second = _message(path)
+    first = _message(path, at=datetime.now(tz=timezone.utc))
+    second = _message(path, at=datetime.now(tz=timezone.utc))
 
     service.ingest(first, weight_delta=0.5)
     service.ingest(second, weight_delta=1.5)
@@ -61,7 +63,7 @@ def test_ingest_accumulates_weight_for_existing_nodes() -> None:
 
 def test_get_node_returns_existing_node() -> None:
     service = ChannelTreeService()
-    message = _message(("alpha", "beta", "gamma"))
+    message = _message(("alpha", "beta", "gamma"), at=datetime.now(tz=timezone.utc))
     service.ingest(message)
 
     node = service.get_node(("alpha", "beta"))
@@ -78,9 +80,10 @@ def test_get_node_returns_none_for_missing_path() -> None:
 
 def test_iter_nodes_traverses_depth_first() -> None:
     service = ChannelTreeService()
-    service.ingest(_message(("alpha", "beta")))
-    service.ingest(_message(("alpha", "gamma")))
-    service.ingest(_message(("delta",)))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha", "beta"), at=now))
+    service.ingest(_message(("alpha", "gamma"), at=now))
+    service.ingest(_message(("delta",), at=now))
 
     paths = [node.path for node in service.iter_nodes()]
 
@@ -93,8 +96,9 @@ def test_iter_nodes_traverses_depth_first() -> None:
 
 def test_prune_removes_subtree_and_updates_weights() -> None:
     service = ChannelTreeService()
-    service.ingest(_message(("alpha", "beta")))
-    service.ingest(_message(("alpha", "gamma")))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha", "beta"), at=now))
+    service.ingest(_message(("alpha", "gamma"), at=now))
 
     service.prune(("alpha", "beta"))
 
@@ -107,7 +111,7 @@ def test_prune_removes_subtree_and_updates_weights() -> None:
 
 def test_prune_missing_path_is_noop() -> None:
     service = ChannelTreeService()
-    service.ingest(_message(("alpha",)))
+    service.ingest(_message(("alpha",), at=datetime.now(tz=timezone.utc)))
 
     service.prune(("missing",))
 
@@ -123,14 +127,15 @@ def test_prune_root_raises() -> None:
 
 def test_schedule_decay_updates_fade_deadlines() -> None:
     service = ChannelTreeService()
-    message = _message(("alpha",))
+    now = datetime.now(tz=timezone.utc)
+    message = _message(("alpha",), at=now)
     service.ingest(message)
 
     node = service.get_node(("alpha",))
     assert node is not None
     node.fade_deadline = None
 
-    service.schedule_decay(datetime.now())
+    service.schedule_decay(datetime.now(tz=timezone.utc))
 
     assert node.fade_deadline is not None
 
@@ -141,10 +146,36 @@ def test_configure_decay_overrides_hold_and_decay() -> None:
     custom_decay = timedelta(seconds=15)
 
     service.configure_decay(hold=custom_hold, decay=custom_decay)
-    message = _message(("alpha",))
+    now = datetime.now(tz=timezone.utc)
+    message = _message(("alpha",), at=now)
     service.ingest(message)
 
     node = service.get_node(("alpha",))
     assert node is not None
     expected_deadline = message.received_at + custom_hold + custom_decay
     assert node.fade_deadline == expected_deadline
+
+
+def test_history_stores_recent_messages() -> None:
+    service = ChannelTreeService()
+    now = datetime.now(tz=timezone.utc)
+
+    message = _message(("alpha",), at=now)
+    service.ingest(message)
+
+    history = service.get_history(("alpha",))
+    assert len(history) == 1
+    assert history[0].id == message.id
+
+
+def test_history_respects_capacity_limit() -> None:
+    service = ChannelTreeService()
+    now = datetime.now(tz=timezone.utc)
+
+    for index in range(105):
+        service.ingest(
+            _message(("alpha",), at=now),
+        )
+
+    history = service.get_history(("alpha",))
+    assert len(history) == 100

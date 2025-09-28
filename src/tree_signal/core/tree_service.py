@@ -1,10 +1,13 @@
 """In-memory channel tree service used by the layout engine."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Dict, Iterable, Optional
+from collections import deque
+from datetime import datetime, timedelta, timezone
+from typing import Deque, Dict, Iterable, List, Optional
 
 from . import ChannelNodeState, ChannelPath, Message
+
+MAX_HISTORY = 100
 
 
 class ChannelTreeService:
@@ -14,6 +17,7 @@ class ChannelTreeService:
         self._root = ChannelNodeState(path=(), weight=0.0)
         self._hold = timedelta(seconds=10)
         self._decay = timedelta(seconds=5)
+        self._history: Dict[ChannelPath, Deque[Message]] = {}
 
     @property
     def root(self) -> ChannelNodeState:
@@ -32,6 +36,8 @@ class ChannelTreeService:
             node = self._ensure_child(node=node, segment=segment)
             node.touch(timestamp=timestamp, weight_delta=weight_delta)
             node.schedule_fade(self._hold, self._decay)
+
+        self._append_history(message)
 
     def configure_decay(self, hold: timedelta, decay: timedelta) -> None:
         """Update decay configuration used when scheduling fades."""
@@ -75,6 +81,8 @@ class ChannelTreeService:
             else:
                 break
 
+        self._history.pop(path, None)
+
     def iter_nodes(self) -> Iterable[ChannelNodeState]:
         """Yield nodes in depth-first order for layout calculations."""
 
@@ -95,6 +103,17 @@ class ChannelTreeService:
                 return None
         return node
 
+    def get_history(self, path: ChannelPath) -> List[Message]:
+        """Return recent messages for the requested channel path."""
+
+        return list(self._history.get(path, ()))
+
+    def _append_history(self, message: Message) -> None:
+        """Store a message in the bounded in-memory history."""
+
+        history = self._history.setdefault(message.channel_path, deque(maxlen=MAX_HISTORY))
+        history.append(message)
+
     def _ensure_child(self, node: ChannelNodeState, segment: str) -> ChannelNodeState:
         """Fetch or create a child node for the given segment."""
 
@@ -107,4 +126,4 @@ class ChannelTreeService:
             return child
 
 
-__all__ = ["ChannelTreeService"]
+__all__ = ["ChannelTreeService", "MAX_HISTORY"]

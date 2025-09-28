@@ -1,12 +1,12 @@
-"""API schemas for message ingestion endpoints."""
+"""API schemas for message and layout endpoints."""
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
-from tree_signal.core import LayoutFrame, LayoutRect, PanelState
+from tree_signal.core import LayoutFrame, LayoutRect, Message, PanelState
 
 
 class MessageIngress(BaseModel):
@@ -23,6 +23,28 @@ class MessageIngressResponse(BaseModel):
 
     id: str
     status: str = "accepted"
+
+
+class MessageRecord(BaseModel):
+    """Outbound representation of a stored message."""
+
+    id: str
+    channel: Tuple[str, ...]
+    payload: str
+    severity: str
+    received_at: datetime
+    metadata: Optional[Dict[str, str]]
+
+    @classmethod
+    def from_domain(cls, message: Message) -> "MessageRecord":
+        return cls(
+            id=message.id,
+            channel=message.channel_path,
+            payload=message.payload,
+            severity=message.severity.value,
+            received_at=message.received_at,
+            metadata=message.metadata,
+        )
 
 
 class LayoutRectModel(BaseModel):
@@ -59,4 +81,5 @@ __all__ = [
     "LayoutRectModel",
     "MessageIngress",
     "MessageIngressResponse",
+    "MessageRecord",
 ]

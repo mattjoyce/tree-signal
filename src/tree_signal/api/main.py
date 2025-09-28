@@ -15,6 +15,7 @@ from .schemas import (
     LayoutFrameResponse,
     MessageIngress,
     MessageIngressResponse,
+    MessageRecord,
 )
 
 app = FastAPI(title="Tree Signal", version="0.1.0")
@@ -56,9 +57,7 @@ async def root() -> JSONResponse:
 async def ingest_message(payload: MessageIngress) -> MessageIngressResponse:
     """Accept a message for inclusion in the channel tree."""
 
-    segments = tuple(segment for segment in payload.channel.split(".") if segment)
-    if not segments:
-        raise HTTPException(status_code=422, detail="channel path must not be empty")
+    segments = _parse_channel(payload.channel)
 
     try:
         severity = MessageSeverity(payload.severity.lower())
@@ -81,6 +80,16 @@ async def ingest_message(payload: MessageIngress) -> MessageIngressResponse:
     return MessageIngressResponse(id=message_id)
 
 
+@app.get("/v1/messages/{channel}", response_model=List[MessageRecord])
+async def list_messages(channel: str) -> List[MessageRecord]:
+    """Return the recent message history for a channel."""
+
+    segments = _parse_channel(channel)
+    tree_service = get_tree_service()
+    history = tree_service.get_history(segments)
+    return [MessageRecord.from_domain(msg) for msg in history]
+
+
 @app.get("/v1/layout", response_model=List[LayoutFrameResponse])
 async def get_layout() -> List[LayoutFrameResponse]:
     """Return the current layout frames for active panels."""
@@ -89,3 +98,10 @@ async def get_layout() -> List[LayoutFrameResponse]:
     generator = get_layout_generator()
     frames = generator.generate(tree_service, timestamp=datetime.now(tz=timezone.utc))
     return [LayoutFrameResponse.from_domain(frame) for frame in frames]
+
+
+def _parse_channel(raw: str) -> tuple[str, ...]:
+    segments = tuple(segment for segment in raw.split(".") if segment)
+    if not segments:
+        raise HTTPException(status_code=422, detail="channel path must not be empty")
+    return segments
