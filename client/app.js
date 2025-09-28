@@ -78,7 +78,7 @@ function renderLayout(frames, historyMap) {
     cell.dataset.channel = channel;
 
     const isSingleTopLevel = depth === 0 && topLevelCount <= 1;
-    const gapPercent = isSingleTopLevel ? 0 : 0.6;
+    const gapPercent = depth === 0 ? 0 : 0.6;
     const widthPercent = Math.max(frame.rect.width * 100 - gapPercent * 2, 0);
     const heightPercent = Math.max(frame.rect.height * 100 - gapPercent * 2, 0);
     const leftPercent = frame.rect.x * 100 + gapPercent;
