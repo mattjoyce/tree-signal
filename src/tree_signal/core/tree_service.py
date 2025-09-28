@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from . import ChannelNodeState, ChannelPath, Message
 
@@ -20,13 +20,15 @@ class ChannelTreeService:
         return self._root
 
     def ingest(self, message: Message, weight_delta: float = 1.0) -> None:
-        """Add a message to the tree and update node weights.
+        """Add a message to the tree and update node weights."""
 
-        Phase 1 placeholder: real implementation will construct nodes on demand,
-        adjust weights along the path, and record timestamps.
-        """
+        timestamp = message.received_at
+        node = self._root
+        node.touch(timestamp=timestamp, weight_delta=weight_delta)
 
-        raise NotImplementedError("Channel ingestion not implemented yet")
+        for segment in message.channel_path:
+            node = self._ensure_child(node=node, segment=segment)
+            node.touch(timestamp=timestamp, weight_delta=weight_delta)
 
     def schedule_decay(self, now: datetime) -> None:
         """Apply decay semantics across the tree.
@@ -50,6 +52,17 @@ class ChannelTreeService:
         """Return the node at the requested path if it exists."""
 
         raise NotImplementedError("Node lookup not implemented yet")
+
+    def _ensure_child(self, node: ChannelNodeState, segment: str) -> ChannelNodeState:
+        """Fetch or create a child node for the given segment."""
+
+        try:
+            return node.children[segment]
+        except KeyError:
+            child_path = (*node.path, segment)
+            child = ChannelNodeState(path=child_path, weight=0.0)
+            node.children[segment] = child
+            return child
 
 
 __all__ = ["ChannelTreeService"]
