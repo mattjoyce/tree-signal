@@ -36,39 +36,52 @@ class LinearLayoutGenerator:
         frames: List[LayoutFrame],
         timestamp: datetime,
     ) -> None:
-        if node.path:
-            frames.append(
-                LayoutFrame(
-                    path=node.path,
-                    rect=rect,
-                    state=self._resolve_state(node, timestamp),
-                    weight=node.weight,
-                    generated_at=timestamp,
-                )
-            )
-
         children = list(node.children.values())
         if not children:
+            if node.path:
+                frames.append(
+                    LayoutFrame(
+                        path=node.path,
+                        rect=rect,
+                        state=self._resolve_state(node, timestamp),
+                        weight=node.weight,
+                        generated_at=timestamp,
+                    )
+                )
             return
 
         orientation_horizontal = depth % 2 == 0
-        if depth == 0:
-            weights = [1.0 for _ in children]
-        else:
-            weights = [max(child.weight, 0.0) for child in children]
 
-        total_weight = sum(weights)
+        segments = []
+        include_self = bool(node.path)
+
+        if include_self:
+            if children:
+                self_weight = float(len(children))
+            else:
+                self_weight = max(node.weight, 0.0) or 1.0
+            segments.append(("self", self_weight))
+
+        for child in children:
+            if depth == 0:
+                weight = 1.0
+            else:
+                weight = max(child.weight, 0.0) or 1.0
+            segments.append((child, weight))
+
+        total_weight = sum(weight for _, weight in segments)
         if total_weight <= 0:
-            total_weight = float(len(children))
+            total_weight = float(len(segments))
 
         remaining = 1.0
         cursor = rect.x if orientation_horizontal else rect.y
+        self_rect: LayoutRect | None = None
 
-        for index, (child, weight) in enumerate(zip(children, weights)):
+        for index, (segment, weight) in enumerate(segments):
             raw_fraction = weight / total_weight if total_weight else 0.0
             fraction = max(raw_fraction, self._min_extent)
 
-            if index == len(children) - 1:
+            if index == len(segments) - 1:
                 fraction = remaining
             else:
                 fraction = min(fraction, remaining)
@@ -93,7 +106,22 @@ class LinearLayoutGenerator:
                 cursor += height
 
             remaining = max(0.0, remaining - fraction)
-            self._populate_frames(child, child_rect, depth=depth + 1, frames=frames, timestamp=timestamp)
+
+            if segment == "self":
+                self_rect = child_rect
+            else:
+                self._populate_frames(segment, child_rect, depth=depth + 1, frames=frames, timestamp=timestamp)
+
+        if node.path and self_rect is not None:
+            frames.append(
+                LayoutFrame(
+                    path=node.path,
+                    rect=self_rect,
+                    state=self._resolve_state(node, timestamp),
+                    weight=node.weight,
+                    generated_at=timestamp,
+                )
+            )
 
     def _resolve_state(self, node: ChannelNodeState, timestamp: datetime) -> PanelState:
         deadline = node.fade_deadline

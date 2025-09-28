@@ -66,6 +66,7 @@ def test_nested_children_split_vertically() -> None:
     two = _frame(frames, ("alpha", "two"))
 
     assert alpha.rect.width == 1.0
-    assert round(one.rect.height, 2) == 0.5
-    assert round(two.rect.height, 2) == 0.5
+    assert round(alpha.rect.height, 2) == 0.5
+    assert round(one.rect.height, 2) == 0.25
+    assert round(two.rect.height, 2) == 0.25
     assert one.rect.x == two.rect.x == 0.0
