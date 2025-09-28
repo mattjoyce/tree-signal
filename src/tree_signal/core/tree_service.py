@@ -41,7 +41,27 @@ class ChannelTreeService:
     def prune(self, path: ChannelPath) -> None:
         """Remove a subtree rooted at the given path."""
 
-        raise NotImplementedError("Pruning not implemented yet")
+        if not path:
+            raise ValueError("Cannot prune the root node")
+
+        parent = self.get_node(path[:-1])
+        if parent is None:
+            return
+
+        segment = path[-1]
+        try:
+            removed = parent.children.pop(segment)
+        except KeyError:
+            return
+
+        delta = removed.weight
+        node = parent
+        while node:
+            node.weight = max(node.weight - delta, 0.0)
+            if node.path:
+                node = self.get_node(node.path[:-1])
+            else:
+                break
 
     def iter_nodes(self) -> Iterable[ChannelNodeState]:
         """Yield nodes in depth-first order for layout calculations."""

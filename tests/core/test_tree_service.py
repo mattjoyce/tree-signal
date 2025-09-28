@@ -6,7 +6,7 @@ from tree_signal.core import ChannelTreeService
 from tree_signal.core.models import ChannelNodeState, Message, MessageSeverity
 
 
-def _message(path: tuple[str, ...]) -> Message:
+def _message(path: tuple[str, ...], weight: float = 1.0) -> Message:
     return Message(
         id="test",
         channel_path=path,
@@ -89,3 +89,33 @@ def test_iter_nodes_traverses_depth_first() -> None:
     assert ("alpha", "beta") in paths
     assert ("alpha", "gamma") in paths
     assert ("delta",) in paths
+
+
+def test_prune_removes_subtree_and_updates_weights() -> None:
+    service = ChannelTreeService()
+    service.ingest(_message(("alpha", "beta")))
+    service.ingest(_message(("alpha", "gamma")))
+
+    service.prune(("alpha", "beta"))
+
+    alpha = service.get_node(("alpha",))
+    assert alpha is not None
+    assert "beta" not in alpha.children
+    assert alpha.weight == 1.0
+    assert service.root.weight == 1.0
+
+
+def test_prune_missing_path_is_noop() -> None:
+    service = ChannelTreeService()
+    service.ingest(_message(("alpha",)))
+
+    service.prune(("missing",))
+
+    assert service.get_node(("alpha",)) is not None
+
+
+def test_prune_root_raises() -> None:
+    service = ChannelTreeService()
+
+    with pytest.raises(ValueError):
+        service.prune(())
