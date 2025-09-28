@@ -26,25 +26,7 @@
         <h2>Layout Overview</h2>
         <div id="layout-stage" class="layout-stage" aria-live="polite" aria-label="Layout overview"></div>
       </section>
-      <section class="messages-panel">
-        <h2>Channel Messages <small id="messages-channel">alpha.beta</small></h2>
-        <form id="channel-form" class="channel-form">
-          <label for="channel-input">Channel</label>
-          <input id="channel-input" name="channel" type="text" value="alpha.beta" />
-          <button type="submit">Load</button>
-        </form>
-        <div id="message-list" class="message-list" aria-live="polite"></div>
-      </section>
     </main>
-    <template id="message-item-template">
-      <article class="message-item">
-        <header>
-          <span class="badge"></span>
-          <time class="timestamp"></time>
-        </header>
-        <pre class="payload"></pre>
-      </article>
-    </template>
     <script src="app.js" type="module"></script>
   </body>
 </html>

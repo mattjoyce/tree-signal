@@ -15,14 +15,9 @@ const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
 const REFRESH_INTERVAL_MS = Number(window.localStorage.getItem("tree-signal.refreshMs") || "5000");
 
 const layoutStage = document.querySelector("#layout-stage");
-const messageContainer = document.querySelector("#message-list");
-const messageTemplate = document.querySelector("#message-item-template");
 const lastRefresh = document.querySelector("#last-refresh");
 const refreshButton = document.querySelector("#refresh-button");
-const channelForm = document.querySelector("#channel-form");
-const channelInput = document.querySelector("#channel-input");
 const intervalDisplay = document.querySelector("#refresh-interval");
-const messagesChannelLabel = document.querySelector("#messages-channel");
 const clientVersionLabel = document.querySelector("#client-version");
 
 const CLIENT_VERSION = "v0.1.0";
@@ -30,12 +25,11 @@ if (clientVersionLabel) {
   clientVersionLabel.textContent = CLIENT_VERSION;
 }
 
-let currentChannel = channelInput.value.trim() || "alpha.beta";
-
 let refreshTimer = null;
 
 function requestHeaders() {
   const headers = new Headers();
+  headers.set("Content-Type", "application/json");
   if (API_KEY) {
     headers.set("x-api-key", API_KEY);
   }
@@ -51,8 +45,28 @@ async function fetchJSON(path) {
   return response.json();
 }
 
-function renderLayout(frames) {
+async function fetchHistories(frames) {
+  const uniqueChannels = Array.from(new Set(frames.map((frame) => frame.path.join("."))));
+  const results = await Promise.all(
+    uniqueChannels.map((channel) => fetchJSON(`/v1/messages/${encodeURIComponent(channel)}`))
+  );
+  const historyMap = new Map();
+  uniqueChannels.forEach((channel, index) => {
+    historyMap.set(channel, results[index] || []);
+  });
+  return historyMap;
+}
+
+function renderLayout(frames, historyMap) {
   layoutStage.innerHTML = "";
+  if (!frames.length) {
+    const empty = document.createElement("p");
+    empty.className = "message-empty";
+    empty.textContent = "No panels yet. Send a message to create one.";
+    layoutStage.appendChild(empty);
+    return;
+  }
+
   frames.forEach((frame) => {
     const channel = frame.path.join(".");
     const depth = frame.path.length - 1;
@@ -60,14 +74,17 @@ function renderLayout(frames) {
     cell.className = `layout-cell state-${frame.state.toLowerCase()}`;
     cell.dataset.depth = String(depth);
     cell.dataset.channel = channel;
-    cell.style.left = `${frame.rect.x * 100}%`;
-    cell.style.top = `${frame.rect.y * 100}%`;
-    cell.style.width = `${frame.rect.width * 100}%`;
-    cell.style.height = `${frame.rect.height * 100}%`;
 
-    if (channel === currentChannel) {
-      cell.classList.add("selected");
-    }
+    const gapPercent = 0.8;
+    const widthPercent = Math.max(frame.rect.width * 100 - gapPercent * 2, 1);
+    const heightPercent = Math.max(frame.rect.height * 100 - gapPercent * 2, 1);
+    const leftPercent = frame.rect.x * 100 + gapPercent;
+    const topPercent = frame.rect.y * 100 + gapPercent;
+
+    cell.style.left = `${leftPercent}%`;
+    cell.style.top = `${topPercent}%`;
+    cell.style.width = `${widthPercent}%`;
+    cell.style.height = `${heightPercent}%`;
 
     const header = document.createElement("header");
     const pathSpan = document.createElement("span");
@@ -82,57 +99,39 @@ function renderLayout(frames) {
     metrics.className = "metrics";
     metrics.textContent = `w=${frame.weight.toFixed(2)} // ${frame.rect.width.toFixed(2)}×${frame.rect.height.toFixed(2)}`;
 
-    cell.append(header, metrics);
-    cell.addEventListener("click", () => {
-      selectChannel(channel);
-    });
+    const messagesContainer = document.createElement("div");
+    messagesContainer.className = "messages";
+    const messages = historyMap.get(channel) || [];
+    if (!messages.length) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "snippet";
+      placeholder.textContent = "No messages yet.";
+      messagesContainer.appendChild(placeholder);
+    } else {
+      messages.slice(0, 3).forEach((message) => {
+        const snippet = document.createElement("div");
+        snippet.className = "snippet";
+        snippet.dataset.severity = message.severity;
+        const time = document.createElement("time");
+        time.dateTime = message.received_at;
+        time.textContent = new Date(message.received_at).toLocaleTimeString();
+        const content = document.createElement("div");
+        content.textContent = message.payload;
+        snippet.append(time, content);
+        messagesContainer.appendChild(snippet);
+      });
+    }
 
+    cell.append(header, metrics, messagesContainer);
     layoutStage.appendChild(cell);
   });
 }
 
-function renderMessages(messages) {
-  messageContainer.innerHTML = "";
-  if (!messages.length) {
-    const empty = document.createElement("p");
-    empty.className = "message-empty";
-    empty.textContent = "No messages yet.";
-    messageContainer.appendChild(empty);
-    return;
-  }
-
-  messages.forEach((message) => {
-    const node = messageTemplate.content.cloneNode(true);
-    const article = node.querySelector(".message-item");
-    const badge = node.querySelector(".badge");
-    const timestamp = node.querySelector(".timestamp");
-    const payload = node.querySelector(".payload");
-
-    badge.textContent = message.severity.toUpperCase();
-    badge.dataset.severity = message.severity;
-    const date = new Date(message.received_at);
-    timestamp.textContent = date.toLocaleString();
-    payload.textContent = message.payload;
-
-    messageContainer.appendChild(article);
-  });
-}
-
-async function refreshDashboard(channel = currentChannel) {
-  if (!channel) {
-    return;
-  }
-  currentChannel = channel;
-  channelInput.value = currentChannel;
-  messagesChannelLabel.textContent = currentChannel;
+async function refreshDashboard() {
   try {
-    const [layout, messages] = await Promise.all([
-      fetchJSON("/v1/layout"),
-      fetchJSON(`/v1/messages/${encodeURIComponent(currentChannel)}`),
-    ]);
-
-    renderLayout(layout);
-    renderMessages(messages);
+    const layout = await fetchJSON("/v1/layout");
+    const historyMap = await fetchHistories(layout);
+    renderLayout(layout, historyMap);
     lastRefresh.textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
   } catch (error) {
     console.error(error);
@@ -148,23 +147,9 @@ function scheduleRefresh() {
   refreshTimer = setInterval(() => refreshDashboard(), REFRESH_INTERVAL_MS);
 }
 
-function selectChannel(channel) {
-  refreshDashboard(channel);
-  scheduleRefresh();
-}
-
 refreshButton.addEventListener("click", () => {
   refreshDashboard();
 });
 
-channelForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const channel = channelInput.value.trim();
-  if (!channel) {
-    return;
-  }
-  selectChannel(channel);
-});
-
-// initial load
-selectChannel(currentChannel);
+refreshDashboard();
+scheduleRefresh();
