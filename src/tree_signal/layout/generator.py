@@ -1,63 +1,100 @@
-"""Simple layout generator producing placeholder rectangles for panels."""
+"""Hierarchical layout generator producing treemap-style rectangles."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Iterable, List
+from typing import List, Tuple
 
 from tree_signal.core import ChannelNodeState, ChannelTreeService, LayoutFrame, LayoutRect, PanelState
 
 
 class LinearLayoutGenerator:
-    """Generate a vertical stack of panels sized proportionally by weight."""
+    """Generate nested rectangles by alternating split orientation per depth."""
 
-    def __init__(self, min_height: float = 0.05) -> None:
-        self._min_height = min_height
+    def __init__(self, min_extent: float = 0.02) -> None:
+        self._min_extent = min_extent
 
     def generate(self, tree: ChannelTreeService, *, timestamp: datetime | None = None) -> List[LayoutFrame]:
-        """Produce layout frames for all non-root nodes."""
+        """Produce layout frames for all nodes except the synthetic root."""
 
         timestamp = timestamp or datetime.now(tz=timezone.utc)
-        nodes = [node for node in tree.iter_nodes() if node.path]
-        if not nodes:
-            return []
-
-        total_weight = sum(max(node.weight, 0.0) for node in nodes)
-        if total_weight <= 0:
-            total_weight = float(len(nodes))
-
         frames: List[LayoutFrame] = []
-        cursor_y = 0.0
 
-        for node in nodes:
-            weight_fraction = max(node.weight, 0.0) / total_weight
-            height = max(weight_fraction, self._min_height)
-            if cursor_y + height > 1.0:
-                height = max(0.0, 1.0 - cursor_y)
+        root = tree.root
+        if not root.children:
+            return frames
 
-            rect = LayoutRect(x=0.0, y=cursor_y, width=1.0, height=height)
-            state = self._resolve_state(node=node, timestamp=timestamp)
+        root_rect = LayoutRect(x=0.0, y=0.0, width=1.0, height=1.0)
+        self._populate_frames(root, root_rect, depth=0, frames=frames, timestamp=timestamp)
+        return frames
 
+    def _populate_frames(
+        self,
+        node: ChannelNodeState,
+        rect: LayoutRect,
+        *,
+        depth: int,
+        frames: List[LayoutFrame],
+        timestamp: datetime,
+    ) -> None:
+        if node.path:
             frames.append(
                 LayoutFrame(
                     path=node.path,
                     rect=rect,
-                    state=state,
+                    state=self._resolve_state(node, timestamp),
                     weight=node.weight,
                     generated_at=timestamp,
                 )
             )
 
-            cursor_y = min(1.0, cursor_y + height)
+        children = list(node.children.values())
+        if not children:
+            return
 
-        return frames
+        orientation_horizontal = depth % 2 == 0
+        total_weight = sum(max(child.weight, 0.0) for child in children)
+        if total_weight <= 0:
+            total_weight = float(len(children))
+
+        remaining = 1.0
+        cursor = rect.x if orientation_horizontal else rect.y
+
+        for index, child in enumerate(children):
+            raw_fraction = max(child.weight, 0.0) / total_weight if total_weight else 0.0
+            fraction = max(raw_fraction, self._min_extent)
+
+            if index == len(children) - 1:
+                fraction = remaining
+            else:
+                fraction = min(fraction, remaining)
+
+            if orientation_horizontal:
+                width = fraction * rect.width
+                child_rect = LayoutRect(
+                    x=cursor,
+                    y=rect.y,
+                    width=width,
+                    height=rect.height,
+                )
+                cursor += width
+            else:
+                height = fraction * rect.height
+                child_rect = LayoutRect(
+                    x=rect.x,
+                    y=cursor,
+                    width=rect.width,
+                    height=height,
+                )
+                cursor += height
+
+            remaining = max(0.0, remaining - fraction)
+            self._populate_frames(child, child_rect, depth=depth + 1, frames=frames, timestamp=timestamp)
 
     def _resolve_state(self, node: ChannelNodeState, timestamp: datetime) -> PanelState:
-        """Determine the panel state based on fade deadlines."""
-
-        if node.fade_deadline is None:
+        deadline = node.fade_deadline
+        if deadline is None:
             return PanelState.ACTIVE
 
-        deadline = node.fade_deadline
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=timezone.utc)
 

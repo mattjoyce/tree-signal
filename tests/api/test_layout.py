@@ -36,7 +36,8 @@ async def test_layout_endpoint_returns_frames() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert len(payload) == 2
-    assert payload[0]["rect"]["width"] == 1.0
+    widths = sorted(frame["rect"]["width"] for frame in payload)
+    assert [round(width, 2) for width in widths] == [0.5, 0.5]
 
 
 @pytest.mark.asyncio
