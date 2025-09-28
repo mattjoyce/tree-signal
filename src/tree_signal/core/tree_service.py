@@ -1,7 +1,7 @@
 """In-memory channel tree service used by the layout engine."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Iterable, Optional
 
 from . import ChannelNodeState, ChannelPath, Message
@@ -12,6 +12,8 @@ class ChannelTreeService:
 
     def __init__(self) -> None:
         self._root = ChannelNodeState(path=(), weight=0.0)
+        self._hold = timedelta(seconds=10)
+        self._decay = timedelta(seconds=5)
 
     @property
     def root(self) -> ChannelNodeState:
@@ -29,14 +31,24 @@ class ChannelTreeService:
         for segment in message.channel_path:
             node = self._ensure_child(node=node, segment=segment)
             node.touch(timestamp=timestamp, weight_delta=weight_delta)
+            node.schedule_fade(self._hold, self._decay)
+
+    def configure_decay(self, hold: timedelta, decay: timedelta) -> None:
+        """Update decay configuration used when scheduling fades."""
+
+        self._hold = hold
+        self._decay = decay
 
     def schedule_decay(self, now: datetime) -> None:
         """Apply decay semantics across the tree.
 
-        Placeholder for the lifecycle scheduler that will shrink inactive panels.
+        Phase 1 placeholder: propagate fade deadlines, but do not modify weights yet.
         """
 
-        raise NotImplementedError("Decay scheduling not implemented yet")
+        for node in self.iter_nodes():
+            if node.last_message_at is None or node.locked:
+                continue
+            node.schedule_fade(self._hold, self._decay)
 
     def prune(self, path: ChannelPath) -> None:
         """Remove a subtree rooted at the given path."""

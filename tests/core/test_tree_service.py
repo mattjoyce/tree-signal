@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -6,7 +6,7 @@ from tree_signal.core import ChannelTreeService
 from tree_signal.core.models import ChannelNodeState, Message, MessageSeverity
 
 
-def _message(path: tuple[str, ...], weight: float = 1.0) -> Message:
+def _message(path: tuple[str, ...]) -> Message:
     return Message(
         id="test",
         channel_path=path,
@@ -119,3 +119,32 @@ def test_prune_root_raises() -> None:
 
     with pytest.raises(ValueError):
         service.prune(())
+
+
+def test_schedule_decay_updates_fade_deadlines() -> None:
+    service = ChannelTreeService()
+    message = _message(("alpha",))
+    service.ingest(message)
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    node.fade_deadline = None
+
+    service.schedule_decay(datetime.now())
+
+    assert node.fade_deadline is not None
+
+
+def test_configure_decay_overrides_hold_and_decay() -> None:
+    service = ChannelTreeService()
+    custom_hold = timedelta(seconds=20)
+    custom_decay = timedelta(seconds=15)
+
+    service.configure_decay(hold=custom_hold, decay=custom_decay)
+    message = _message(("alpha",))
+    service.ingest(message)
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    expected_deadline = message.received_at + custom_hold + custom_decay
+    assert node.fade_deadline == expected_deadline
