@@ -1,4 +1,6 @@
 const API_BASE = window.localStorage.getItem("tree-signal.api") || "http://localhost:8000";
+const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
+const REFRESH_INTERVAL_MS = Number(window.localStorage.getItem("tree-signal.refreshMs") || "5000");
 
 const layoutContainer = document.querySelector("#layout-grid");
 const layoutTemplate = document.querySelector("#layout-item-template");
@@ -8,9 +10,20 @@ const lastRefresh = document.querySelector("#last-refresh");
 const refreshButton = document.querySelector("#refresh-button");
 const channelForm = document.querySelector("#channel-form");
 const channelInput = document.querySelector("#channel-input");
+const intervalDisplay = document.querySelector("#refresh-interval");
+
+let refreshTimer = null;
+
+function requestHeaders() {
+  const headers = new Headers();
+  if (API_KEY) {
+    headers.set("x-api-key", API_KEY);
+  }
+  return headers;
+}
 
 async function fetchJSON(path) {
-  const response = await fetch(`${API_BASE}${path}`);
+  const response = await fetch(`${API_BASE}${path}`, { headers: requestHeaders() });
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(`Request failed (${response.status}): ${detail}`);
@@ -67,8 +80,17 @@ async function refreshDashboard(channel) {
   }
 }
 
+function scheduleRefresh(channel) {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+  }
+  intervalDisplay.textContent = `(auto ${Math.round(REFRESH_INTERVAL_MS / 1000)}s)`;
+  refreshTimer = setInterval(() => refreshDashboard(channel), REFRESH_INTERVAL_MS);
+}
+
 refreshButton.addEventListener("click", () => {
-  refreshDashboard(channelInput.value.trim());
+  const channel = channelInput.value.trim();
+  refreshDashboard(channel);
 });
 
 channelForm.addEventListener("submit", (event) => {
@@ -78,7 +100,10 @@ channelForm.addEventListener("submit", (event) => {
     return;
   }
   refreshDashboard(channel);
+  scheduleRefresh(channel);
 });
 
 // initial load
-refreshDashboard(channelInput.value.trim());
+const initialChannel = channelInput.value.trim();
+refreshDashboard(initialChannel);
+scheduleRefresh(initialChannel);
