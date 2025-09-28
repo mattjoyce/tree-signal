@@ -67,6 +67,8 @@ function renderLayout(frames, historyMap) {
     return;
   }
 
+  const topLevelCount = frames.filter((frame) => frame.path.length === 1).length;
+
   frames.forEach((frame) => {
     const channel = frame.path.join(".");
     const depth = frame.path.length - 1;
@@ -75,9 +77,10 @@ function renderLayout(frames, historyMap) {
     cell.dataset.depth = String(depth);
     cell.dataset.channel = channel;
 
-    const gapPercent = 0.8;
-    const widthPercent = Math.max(frame.rect.width * 100 - gapPercent * 2, 1);
-    const heightPercent = Math.max(frame.rect.height * 100 - gapPercent * 2, 1);
+    const isSingleTopLevel = depth === 0 && topLevelCount <= 1;
+    const gapPercent = isSingleTopLevel ? 0 : 0.6;
+    const widthPercent = Math.max(frame.rect.width * 100 - gapPercent * 2, 0);
+    const heightPercent = Math.max(frame.rect.height * 100 - gapPercent * 2, 0);
     const leftPercent = frame.rect.x * 100 + gapPercent;
     const topPercent = frame.rect.y * 100 + gapPercent;
 
