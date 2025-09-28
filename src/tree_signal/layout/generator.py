@@ -1,7 +1,7 @@
 """Simple layout generator producing placeholder rectangles for panels."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, List
 
 from tree_signal.core import ChannelNodeState, ChannelTreeService, LayoutFrame, LayoutRect, PanelState
@@ -16,7 +16,7 @@ class LinearLayoutGenerator:
     def generate(self, tree: ChannelTreeService, *, timestamp: datetime | None = None) -> List[LayoutFrame]:
         """Produce layout frames for all non-root nodes."""
 
-        timestamp = timestamp or datetime.utcnow()
+        timestamp = timestamp or datetime.now(tz=timezone.utc)
         nodes = [node for node in tree.iter_nodes() if node.path]
         if not nodes:
             return []
@@ -54,7 +54,14 @@ class LinearLayoutGenerator:
     def _resolve_state(self, node: ChannelNodeState, timestamp: datetime) -> PanelState:
         """Determine the panel state based on fade deadlines."""
 
-        if node.fade_deadline and timestamp >= node.fade_deadline:
+        if node.fade_deadline is None:
+            return PanelState.ACTIVE
+
+        deadline = node.fade_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+
+        if timestamp >= deadline:
             return PanelState.FADING
         return PanelState.ACTIVE
 

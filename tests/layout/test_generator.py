@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from tree_signal.core import ChannelTreeService, Message, MessageSeverity
 from tree_signal.layout import LinearLayoutGenerator
@@ -17,7 +17,7 @@ def _message(path: tuple[str, ...], *, at: datetime) -> Message:
 
 def test_generate_returns_frame_per_node() -> None:
     service = ChannelTreeService()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     service.ingest(_message(("alpha",), at=now))
     service.ingest(_message(("beta",), at=now))
 
@@ -32,7 +32,7 @@ def test_generate_returns_frame_per_node() -> None:
 
 def test_generate_marks_panels_fading_after_deadline() -> None:
     service = ChannelTreeService()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     message = _message(("alpha",), at=now)
     service.ingest(message)
 
@@ -48,7 +48,7 @@ def test_generate_marks_panels_fading_after_deadline() -> None:
 
 def test_generate_enforces_min_height() -> None:
     service = ChannelTreeService()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     service.ingest(_message(("alpha",), at=now))
 
     generator = LinearLayoutGenerator(min_height=0.2)

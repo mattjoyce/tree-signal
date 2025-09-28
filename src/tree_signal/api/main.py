@@ -2,23 +2,36 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import List
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from tree_signal.core import ChannelTreeService, Message, MessageSeverity
+from tree_signal.layout import LinearLayoutGenerator
 
-from .schemas import MessageIngress, MessageIngressResponse
+from .schemas import (
+    LayoutFrameResponse,
+    MessageIngress,
+    MessageIngressResponse,
+)
 
 app = FastAPI(title="Tree Signal", version="0.1.0")
 app.state.tree_service = ChannelTreeService()
+app.state.layout_generator = LinearLayoutGenerator()
 
 
 def get_tree_service() -> ChannelTreeService:
     """Retrieve the shared channel tree service instance."""
 
     return app.state.tree_service  # type: ignore[return-value]
+
+
+def get_layout_generator() -> LinearLayoutGenerator:
+    """Retrieve the shared layout generator instance."""
+
+    return app.state.layout_generator  # type: ignore[return-value]
 
 
 @app.get("/healthz", summary="Health check")
@@ -66,3 +79,13 @@ async def ingest_message(payload: MessageIngress) -> MessageIngressResponse:
     tree_service.ingest(message)
 
     return MessageIngressResponse(id=message_id)
+
+
+@app.get("/v1/layout", response_model=List[LayoutFrameResponse])
+async def get_layout() -> List[LayoutFrameResponse]:
+    """Return the current layout frames for active panels."""
+
+    tree_service = get_tree_service()
+    generator = get_layout_generator()
+    frames = generator.generate(tree_service, timestamp=datetime.now(tz=timezone.utc))
+    return [LayoutFrameResponse.from_domain(frame) for frame in frames]
