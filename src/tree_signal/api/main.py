@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from tree_signal.core import ChannelTreeService, Message, MessageSeverity
 from tree_signal.layout import LinearLayoutGenerator
@@ -24,6 +25,13 @@ from .schemas import (
 app = FastAPI(title="Tree Signal", version="0.1.0")
 app.state.tree_service = ChannelTreeService()
 app.state.layout_generator = LinearLayoutGenerator()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"] ,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_tree_service() -> ChannelTreeService:
