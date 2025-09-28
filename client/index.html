@@ -14,7 +14,7 @@
   </head>
   <body>
     <header class="app-header">
-      <h1>Tree Signal</h1>
+      <h1>Tree Signal <small id="client-version">v0.1.0</small></h1>
       <div class="header-meta">
         <span id="last-refresh">Last refresh: --</span>
         <span id="refresh-interval" class="refresh-interval"></span>
@@ -24,10 +24,10 @@
     <main class="app-main">
       <section class="layout-panel">
         <h2>Layout Overview</h2>
-        <div id="layout-grid" class="layout-grid" aria-live="polite"></div>
+        <div id="layout-stage" class="layout-stage" aria-live="polite" aria-label="Layout overview"></div>
       </section>
       <section class="messages-panel">
-        <h2>Channel Messages</h2>
+        <h2>Channel Messages <small id="messages-channel">alpha.beta</small></h2>
         <form id="channel-form" class="channel-form">
           <label for="channel-input">Channel</label>
           <input id="channel-input" name="channel" type="text" value="alpha.beta" />
@@ -36,24 +36,6 @@
         <div id="message-list" class="message-list" aria-live="polite"></div>
       </section>
     </main>
-    <template id="layout-item-template">
-      <article class="layout-item">
-        <header class="layout-item__header">
-          <span class="layout-item__path"></span>
-          <span class="layout-item__state"></span>
-        </header>
-        <dl class="layout-item__metrics">
-          <div>
-            <dt>Weight</dt>
-            <dd class="layout-item__weight"></dd>
-          </div>
-          <div>
-            <dt>Rect</dt>
-            <dd class="layout-item__rect"></dd>
-          </div>
-        </dl>
-      </article>
-    </template>
     <template id="message-item-template">
       <article class="message-item">
         <header>
