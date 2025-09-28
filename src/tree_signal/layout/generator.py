@@ -55,19 +55,22 @@ class LinearLayoutGenerator:
         segments = []
         include_self = bool(node.path)
 
-        if include_self:
-            if children:
-                self_weight = float(len(children))
-            else:
-                self_weight = max(node.weight, 0.0) or 1.0
-            segments.append(("self", self_weight))
-
+        child_segments = []
         for child in children:
             if depth == 0:
                 weight = 1.0
             else:
                 weight = max(child.weight, 0.0) or 1.0
-            segments.append((child, weight))
+            child_segments.append((child, weight))
+
+        if include_self:
+            if child_segments:
+                self_weight = min(weight for _, weight in child_segments)
+            else:
+                self_weight = max(node.weight, 0.0) or 1.0
+            segments.append(("self", self_weight))
+
+        segments.extend(child_segments)
 
         total_weight = sum(weight for _, weight in segments)
         if total_weight <= 0:
