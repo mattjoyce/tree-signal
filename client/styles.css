@@ -75,10 +75,7 @@ body {
   width: 100%;
   min-height: 60vh;
   height: calc(100vh - 160px);
-  border-radius: 0.5rem;
-  background: var(--tokyo-panel);
   overflow: hidden;
-  border: 1px solid rgba(122, 162, 247, 0.2);
 }
 
 .layout-cell {
