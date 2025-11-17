@@ -48,8 +48,8 @@ docker run -d \
 
 ## Sending Test Messages
 
+### From the same machine (Unraid host):
 ```bash
-# Send a test message
 curl -X POST "http://localhost:8013/v1/messages" \
   -H "Content-Type: application/json" \
   -d '{
@@ -57,6 +57,30 @@ curl -X POST "http://localhost:8013/v1/messages" \
     "payload": "User logged in successfully",
     "severity": "info",
     "metadata": {"user": "alice"}
+  }'
+```
+
+### From external machines on your network:
+```bash
+curl -X POST "http://YOUR_UNRAID_IP:8013/v1/messages" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel": "monitoring.alerts.cpu",
+    "payload": "CPU usage at 85%",
+    "severity": "warn",
+    "metadata": {"server": "web01", "source": "external"}
+  }'
+```
+
+### Example with more complex hierarchy:
+```bash
+curl -X POST "http://YOUR_UNRAID_IP:8013/v1/messages" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel": "datacenter.rack1.server03.docker.container_restart",
+    "payload": "Container nginx restarted successfully",
+    "severity": "info",
+    "metadata": {"container": "nginx", "uptime": "5m"}
   }'
 ```
 
@@ -81,6 +105,48 @@ Create a new container with these settings:
 - **Volume Mappings**:
   - Container Path: `/app/data` → Host Path: `/mnt/user/appdata/tree-signal`
 - **Restart Policy**: `unless-stopped`
+
+## Integration Examples
+
+Tree Signal can receive messages from any system that can make HTTP requests:
+
+### Shell Scripts & Cron Jobs
+```bash
+#!/bin/bash
+# Send system status
+curl -X POST "http://192.168.20.4:8013/v1/messages" \
+  -H "Content-Type: application/json" \
+  -d "{\"channel\":\"system.health.$(hostname)\",\"payload\":\"System check: $(uptime)\",\"severity\":\"info\"}"
+```
+
+### Python Applications
+```python
+import requests
+
+def send_tree_signal(channel, message, severity="info", metadata=None):
+    data = {
+        "channel": channel,
+        "payload": message, 
+        "severity": severity,
+        "metadata": metadata or {}
+    }
+    response = requests.post("http://192.168.20.4:8013/v1/messages", json=data)
+    return response.json()
+
+# Usage
+send_tree_signal("app.database.connection", "Connection pool exhausted", "error", {"pool_size": 10})
+```
+
+### Docker Container Health Checks
+```bash
+# Add to your container health check scripts
+curl -X POST "http://192.168.20.4:8013/v1/messages" \
+  -H "Content-Type: application/json" \
+  -d '{"channel":"docker.'$(hostname)'.health","payload":"Container health check passed","severity":"info"}'
+```
+
+### Log Processing (rsyslog, fluentd, etc.)
+Forward parsed log entries to Tree Signal to visualize application hierarchy and error patterns in real-time.
 
 ## Environment Variables
 
