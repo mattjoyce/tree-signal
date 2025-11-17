@@ -15,12 +15,14 @@ A lightweight treemap-based hierarchical message dashboard perfect for monitorin
 
 ## Quick Start
 
-### Docker Compose (Recommended)
+### Docker (Recommended)
 
 ```bash
+# Build and run
 git clone https://github.com/mattjoyce/tree-signal.git
 cd tree-signal
-docker-compose up -d
+docker build -t tree-signal .
+docker run -d --name tree-signal -p 8000:8000 -p 8001:8001 --restart unless-stopped tree-signal
 ```
 
 Visit **http://localhost:8001** for the dashboard.

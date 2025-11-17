@@ -4,23 +4,13 @@ A lightweight treemap-based hierarchical message dashboard that can run as a Doc
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Clone and Build
 
 ```bash
 # Clone the repository
 git clone https://github.com/mattjoyce/tree-signal.git
 cd tree-signal
 
-# Start the service
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
-
-### Using Docker Build
-
-```bash
 # Build the image
 docker build -t tree-signal .
 
@@ -33,15 +23,19 @@ docker run -d \
   tree-signal
 ```
 
-### Using Pre-built Image (once available)
+### Or Build from GitHub directly
 
 ```bash
+# Build directly from GitHub (no clone needed)
+docker build -t tree-signal https://github.com/mattjoyce/tree-signal.git
+
+# Run the container
 docker run -d \
   --name tree-signal \
   -p 8000:8000 \
   -p 8001:8001 \
   --restart unless-stopped \
-  ghcr.io/mattjoyce/tree-signal:latest
+  tree-signal
 ```
 
 ## Access the Application
