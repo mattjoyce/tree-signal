@@ -1,5 +1,7 @@
-"""Layout helpers for Tree Signal clients."""
+"""Layout generation utilities."""
 
 from .generator import LinearLayoutGenerator
 
-__all__ = ["LinearLayoutGenerator"]
+__all__ = [
+    "LinearLayoutGenerator",
+]

@@ -10,7 +10,12 @@ if (params.has("refresh")) {
   window.localStorage.setItem("tree-signal.refreshMs", params.get("refresh"));
 }
 
-const API_BASE = window.localStorage.getItem("tree-signal.api") || "http://localhost:8000";
+// Auto-detect API base URL - if client is on port 8001, assume API is on 8000 on same host
+const DEFAULT_API_BASE = window.location.port === "8001" 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : "http://localhost:8000";
+  
+const API_BASE = window.localStorage.getItem("tree-signal.api") || DEFAULT_API_BASE;
 const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
 const REFRESH_INTERVAL_MS = Number(window.localStorage.getItem("tree-signal.refreshMs") || "5000");
 
@@ -67,27 +72,110 @@ function renderLayout(frames, historyMap) {
     return;
   }
 
-  const topLevelCount = frames.filter((frame) => frame.path.length === 1).length;
+  const orderedFrames = [...frames].sort((a, b) => {
+    const depthDelta = a.path.length - b.path.length;
+    if (depthDelta !== 0) {
+      return depthDelta;
+    }
+    return a.path.join(".").localeCompare(b.path.join("."));
+  });
 
-  frames.forEach((frame) => {
+  const boundsAccumulator = new Map();
+
+  const extendBounds = (key, rect) => {
+    const x1 = rect.x;
+    const y1 = rect.y;
+    const x2 = rect.x + rect.width;
+    const y2 = rect.y + rect.height;
+    const existing = boundsAccumulator.get(key);
+    if (existing) {
+      existing.minX = Math.min(existing.minX, x1);
+      existing.minY = Math.min(existing.minY, y1);
+      existing.maxX = Math.max(existing.maxX, x2);
+      existing.maxY = Math.max(existing.maxY, y2);
+    } else {
+      boundsAccumulator.set(key, { minX: x1, minY: y1, maxX: x2, maxY: y2 });
+    }
+  };
+
+  orderedFrames.forEach((frame) => {
+    const parts = frame.path;
+    const rect = frame.rect;
+    for (let depth = 1; depth <= parts.length; depth += 1) {
+      const key = parts.slice(0, depth).join(".");
+      extendBounds(key, rect);
+    }
+  });
+
+  const boundsByChannel = new Map();
+  boundsAccumulator.forEach((acc, key) => {
+    boundsByChannel.set(key, {
+      x: acc.minX,
+      y: acc.minY,
+      width: Math.max(0, acc.maxX - acc.minX),
+      height: Math.max(0, acc.maxY - acc.minY),
+    });
+  });
+
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+  const normaliseRect = (rect, parentRect) => {
+    const width = parentRect.width || 1;
+    const height = parentRect.height || 1;
+    const relative = {
+      x: width === 0 ? 0 : (rect.x - parentRect.x) / width,
+      y: height === 0 ? 0 : (rect.y - parentRect.y) / height,
+      width: width === 0 ? 0 : rect.width / width,
+      height: height === 0 ? 0 : rect.height / height,
+    };
+
+    const clampedX = clamp(relative.x, 0, 1);
+    const clampedY = clamp(relative.y, 0, 1);
+    const maxWidth = 1 - clampedX;
+    const maxHeight = 1 - clampedY;
+
+    return {
+      x: clampedX,
+      y: clampedY,
+      width: clamp(relative.width, 0, maxWidth),
+      height: clamp(relative.height, 0, maxHeight),
+    };
+  };
+
+  const cellRegistry = new Map();
+  const rootRect = { x: 0, y: 0, width: 1, height: 1 };
+
+  orderedFrames.forEach((frame) => {
     const channel = frame.path.join(".");
     const depth = frame.path.length - 1;
+    const parentPath = frame.path.slice(0, -1);
+    const parentChannel = parentPath.join(".");
+    const parentRect = parentChannel ? boundsByChannel.get(parentChannel) || rootRect : rootRect;
+    const displayRect = boundsByChannel.get(channel) || frame.rect;
+    const relativeRect = normaliseRect(displayRect, parentRect);
+
     const cell = document.createElement("div");
     cell.className = `layout-cell state-${frame.state.toLowerCase()}`;
     cell.dataset.depth = String(depth);
     cell.dataset.channel = channel;
+    if (parentChannel) {
+      cell.dataset.parent = parentChannel;
+    }
+    cell.style.zIndex = String(depth + 1);
 
-    const isSingleTopLevel = depth === 0 && topLevelCount <= 1;
     const gapPercent = depth === 0 ? 0 : 0.6;
-    const widthPercent = Math.max(frame.rect.width * 100 - gapPercent * 2, 0);
-    const heightPercent = Math.max(frame.rect.height * 100 - gapPercent * 2, 0);
-    const leftPercent = frame.rect.x * 100 + gapPercent;
-    const topPercent = frame.rect.y * 100 + gapPercent;
+    const widthPercent = Math.max(relativeRect.width * 100 - gapPercent * 2, 0);
+    const heightPercent = Math.max(relativeRect.height * 100 - gapPercent * 2, 0);
+    const leftPercent = relativeRect.x * 100 + gapPercent;
+    const topPercent = relativeRect.y * 100 + gapPercent;
 
     cell.style.left = `${leftPercent}%`;
     cell.style.top = `${topPercent}%`;
     cell.style.width = `${widthPercent}%`;
     cell.style.height = `${heightPercent}%`;
+
+    const content = document.createElement("div");
+    content.className = "layout-content";
 
     const header = document.createElement("header");
     const pathSpan = document.createElement("span");
@@ -108,12 +196,7 @@ function renderLayout(frames, historyMap) {
     const messagesContainer = document.createElement("div");
     messagesContainer.className = "messages";
     const messages = historyMap.get(channel) || [];
-    if (!messages.length) {
-      const placeholder = document.createElement("div");
-      placeholder.className = "snippet";
-      placeholder.textContent = "No messages yet.";
-      messagesContainer.appendChild(placeholder);
-    } else {
+    if (messages.length) {
       const latest = messages[messages.length - 1];
       const snippet = document.createElement("div");
       snippet.className = "snippet";
@@ -121,14 +204,31 @@ function renderLayout(frames, historyMap) {
       const time = document.createElement("time");
       time.dateTime = latest.received_at;
       time.textContent = new Date(latest.received_at).toLocaleTimeString();
-      const content = document.createElement("div");
-      content.textContent = latest.payload;
-      snippet.append(time, content);
+      const payload = document.createElement("div");
+      payload.textContent = latest.payload;
+      snippet.append(time, payload);
       messagesContainer.appendChild(snippet);
     }
 
-    cell.append(header, metrics, divider, messagesContainer);
-    layoutStage.appendChild(cell);
+    content.append(header, metrics, divider, messagesContainer);
+
+    const childrenHost = document.createElement("div");
+    childrenHost.className = "layout-children";
+    childrenHost.hidden = true;
+
+    cell.append(content, childrenHost);
+
+    cellRegistry.set(channel, { cell, childrenHost, hasChildren: false });
+
+    const parentEntry = cellRegistry.get(parentChannel);
+    if (parentEntry) {
+      parentEntry.childrenHost.append(cell);
+      parentEntry.childrenHost.hidden = false;
+      parentEntry.cell.classList.add("has-children");
+      parentEntry.hasChildren = true;
+    } else {
+      layoutStage.appendChild(cell);
+    }
   });
 }
 

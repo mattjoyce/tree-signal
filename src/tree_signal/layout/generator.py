@@ -17,6 +17,10 @@ class LinearLayoutGenerator:
         """Produce layout frames for all nodes except the synthetic root."""
 
         timestamp = timestamp or datetime.now(tz=timezone.utc)
+
+        # Clean up expired messages before generating layout
+        tree.cleanup_expired(timestamp)
+
         frames: List[LayoutFrame] = []
 
         root = tree.root
@@ -24,7 +28,7 @@ class LinearLayoutGenerator:
             return frames
 
         root_rect = LayoutRect(x=0.0, y=0.0, width=1.0, height=1.0)
-        self._populate_frames(root, root_rect, depth=0, frames=frames, timestamp=timestamp)
+        self._populate_frames(root, root_rect, depth=0, frames=frames, timestamp=timestamp, tree=tree)
         return frames
 
     def _populate_frames(
@@ -35,6 +39,7 @@ class LinearLayoutGenerator:
         depth: int,
         frames: List[LayoutFrame],
         timestamp: datetime,
+        tree: ChannelTreeService,
     ) -> None:
         children = list(node.children.values())
         if not children:
@@ -50,72 +55,34 @@ class LinearLayoutGenerator:
                 )
             return
 
-        orientation_horizontal = depth % 2 == 0
-
-        segments = []
         include_self = bool(node.path)
 
-        child_segments = []
-        for child in children:
-            if depth == 0:
-                weight = 1.0
-            else:
-                weight = max(child.weight, 0.0) or 1.0
-            child_segments.append((child, weight))
+        # Determine parent size based on whether it has messages
+        history = tree.get_history(node.path) if include_self else []
+        has_messages = len(history) > 0
 
-        if include_self:
-            if child_segments:
-                self_weight = min(weight for _, weight in child_segments)
-            else:
-                self_weight = max(node.weight, 0.0) or 1.0
-            segments.append(("self", self_weight))
+        # Parent gets 50% height if it has messages, 20% if empty (greedy children)
+        parent_fraction = 0.5 if has_messages else 0.2
+        children_fraction = 1.0 - parent_fraction
 
-        segments.extend(child_segments)
-
-        total_weight = sum(weight for _, weight in segments)
-        if total_weight <= 0:
-            total_weight = float(len(segments))
-
-        remaining = 1.0
-        cursor = rect.x if orientation_horizontal else rect.y
         self_rect: LayoutRect | None = None
 
-        for index, (segment, weight) in enumerate(segments):
-            raw_fraction = weight / total_weight if total_weight else 0.0
-            fraction = max(raw_fraction, self._min_extent)
+        if include_self:
+            # Parent always takes full width, adaptive height at top
+            self_rect = LayoutRect(
+                x=rect.x,
+                y=rect.y,
+                width=rect.width,
+                height=parent_fraction * rect.height,
+            )
+            # Children get remaining height below parent
+            children_rect = LayoutRect(
+                x=rect.x,
+                y=rect.y + parent_fraction * rect.height,
+                width=rect.width,
+                height=children_fraction * rect.height,
+            )
 
-            if index == len(segments) - 1:
-                fraction = remaining
-            else:
-                fraction = min(fraction, remaining)
-
-            if orientation_horizontal:
-                width = fraction * rect.width
-                child_rect = LayoutRect(
-                    x=cursor,
-                    y=rect.y,
-                    width=width,
-                    height=rect.height,
-                )
-                cursor += width
-            else:
-                height = fraction * rect.height
-                child_rect = LayoutRect(
-                    x=rect.x,
-                    y=cursor,
-                    width=rect.width,
-                    height=height,
-                )
-                cursor += height
-
-            remaining = max(0.0, remaining - fraction)
-
-            if segment == "self":
-                self_rect = child_rect
-            else:
-                self._populate_frames(segment, child_rect, depth=depth + 1, frames=frames, timestamp=timestamp)
-
-        if node.path and self_rect is not None:
             frames.append(
                 LayoutFrame(
                     path=node.path,
@@ -125,6 +92,48 @@ class LinearLayoutGenerator:
                     generated_at=timestamp,
                 )
             )
+        else:
+            # No parent panel, children get full rect
+            children_rect = rect
+
+        # Now layout children within children_rect - always split horizontally
+        child_list = list(children)
+        if not child_list:
+            return
+
+        # Split children horizontally (side by side)
+        total_weight = sum(max(child.weight, 0.0) or 1.0 for child in child_list)
+        if total_weight <= 0:
+            total_weight = float(len(child_list))
+
+        remaining = 1.0
+        cursor = children_rect.x
+
+        for index, child in enumerate(child_list):
+            if depth == 0:
+                weight = 1.0
+            else:
+                weight = max(child.weight, 0.0) or 1.0
+
+            raw_fraction = weight / total_weight if total_weight else 0.0
+            fraction = max(raw_fraction, self._min_extent)
+
+            if index == len(child_list) - 1:
+                fraction = remaining
+            else:
+                fraction = min(fraction, remaining)
+
+            width = fraction * children_rect.width
+            child_rect = LayoutRect(
+                x=cursor,
+                y=children_rect.y,
+                width=width,
+                height=children_rect.height,
+            )
+            cursor += width
+
+            remaining = max(0.0, remaining - fraction)
+            self._populate_frames(child, child_rect, depth=depth + 1, frames=frames, timestamp=timestamp, tree=tree)
 
     def _resolve_state(self, node: ChannelNodeState, timestamp: datetime) -> PanelState:
         deadline = node.fade_deadline

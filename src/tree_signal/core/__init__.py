@@ -1,23 +1,23 @@
-"""Core domain types exposed by the Tree Signal service."""
+"""Core domain models and services."""
 
 from .models import (
-    ChannelNodeState,
     ChannelPath,
-    LayoutFrame,
-    LayoutRect,
     Message,
     MessageSeverity,
     PanelState,
+    LayoutRect,
+    LayoutFrame,
+    ChannelNodeState,
 )
 from .tree_service import ChannelTreeService
 
 __all__ = [
-    "ChannelNodeState",
     "ChannelPath",
-    "ChannelTreeService",
-    "LayoutFrame",
-    "LayoutRect",
-    "Message",
+    "Message", 
     "MessageSeverity",
     "PanelState",
+    "LayoutRect",
+    "LayoutFrame",
+    "ChannelNodeState",
+    "ChannelTreeService",
 ]

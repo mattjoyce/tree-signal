@@ -5,7 +5,7 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 from typing import Deque, Dict, Iterable, List, Optional
 
-from . import ChannelNodeState, ChannelPath, Message
+from .models import ChannelNodeState, ChannelPath, Message
 
 MAX_HISTORY = 100
 
@@ -33,7 +33,7 @@ class ChannelTreeService:
         node.touch(timestamp=timestamp, weight_delta=weight_delta)
 
         for segment in message.channel_path:
-            node = self._ensure_child(node=node, segment=segment)
+            node = self._ensure_child(node=node, segment=segment, timestamp=timestamp)
             node.touch(timestamp=timestamp, weight_delta=weight_delta)
             node.schedule_fade(self._hold, self._decay)
 
@@ -55,6 +55,41 @@ class ChannelTreeService:
             if node.last_message_at is None or node.locked:
                 continue
             node.schedule_fade(self._hold, self._decay)
+
+    def cleanup_expired(self, now: datetime) -> None:
+        """Remove expired messages and prune leaf nodes with no active messages."""
+        # Clean up expired messages from history (but keep the history entry)
+        for path, history in list(self._history.items()):
+            # Remove only expired messages
+            while history and history[0].expires_at <= now:
+                history.popleft()
+
+        # Only prune LEAF nodes (no children) with no messages AND created >10s ago
+        from datetime import timedelta
+        empty_node_lifespan = timedelta(seconds=10)
+        paths_to_prune = []
+
+        for node in list(self.iter_nodes()):
+            if not node.path:  # Skip root
+                continue
+
+            # CRITICAL: Never prune if node has children
+            if node.children:
+                continue
+
+            # Only prune leaf nodes with no messages that are old enough
+            history = self.get_history(node.path)
+            if not history and node.created_at:
+                age = now - node.created_at
+                if age >= empty_node_lifespan:
+                    paths_to_prune.append(node.path)
+
+        # Prune paths (bottom-up)
+        for path in sorted(paths_to_prune, key=lambda p: len(p), reverse=True):
+            try:
+                self.prune(path)
+            except ValueError:
+                pass  # Ignore errors
 
     def prune(self, path: ChannelPath) -> None:
         """Remove a subtree rooted at the given path."""
@@ -114,14 +149,14 @@ class ChannelTreeService:
         history = self._history.setdefault(message.channel_path, deque(maxlen=MAX_HISTORY))
         history.append(message)
 
-    def _ensure_child(self, node: ChannelNodeState, segment: str) -> ChannelNodeState:
+    def _ensure_child(self, node: ChannelNodeState, segment: str, timestamp: datetime) -> ChannelNodeState:
         """Fetch or create a child node for the given segment."""
 
         try:
             return node.children[segment]
         except KeyError:
             child_path = (*node.path, segment)
-            child = ChannelNodeState(path=child_path, weight=0.0)
+            child = ChannelNodeState(path=child_path, weight=0.0, created_at=timestamp)
             node.children[segment] = child
             return child
 

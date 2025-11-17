@@ -28,6 +28,12 @@ class Message:
     received_at: datetime
     severity: MessageSeverity = MessageSeverity.INFO
     metadata: Optional[Dict[str, str]] = None
+    lifespan_seconds: float = 30.0  # Default 30 second lifespan
+
+    @property
+    def expires_at(self) -> datetime:
+        """Calculate when this message expires."""
+        return self.received_at + timedelta(seconds=self.lifespan_seconds)
 
 
 class PanelState(str, Enum):
@@ -68,6 +74,7 @@ class ChannelNodeState:
     last_message_at: Optional[datetime] = None
     fade_deadline: Optional[datetime] = None
     locked: bool = False
+    created_at: Optional[datetime] = None
     children: Dict[str, "ChannelNodeState"] = field(default_factory=dict)
 
     def touch(self, timestamp: datetime, weight_delta: float) -> None:
