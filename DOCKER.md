@@ -8,8 +8,8 @@ A lightweight treemap-based hierarchical message dashboard that can run as a Doc
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/tree_signal.git
-cd tree_signal
+git clone https://github.com/mattjoyce/tree-signal.git
+cd tree-signal
 
 # Start the service
 docker-compose up -d
@@ -41,7 +41,7 @@ docker run -d \
   -p 8000:8000 \
   -p 8001:8001 \
   --restart unless-stopped \
-  ghcr.io/YOUR_USERNAME/tree-signal:latest
+  ghcr.io/mattjoyce/tree-signal:latest
 ```
 
 ## Access the Application
@@ -77,7 +77,7 @@ curl -X POST "http://localhost:8000/v1/messages" \
 Create a new container with these settings:
 
 - **Name**: `tree-signal`
-- **Repository**: `ghcr.io/YOUR_USERNAME/tree-signal:latest`
+- **Repository**: `ghcr.io/mattjoyce/tree-signal:latest`
 - **Network Type**: `Bridge`
 - **Port Mappings**:
   - Container Port: `8000` → Host Port: `8000` (API)
@@ -135,7 +135,7 @@ docker restart tree-signal
 ## Building from Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/tree-signal.git
+git clone https://github.com/mattjoyce/tree-signal.git
 cd tree-signal
 docker build -t tree-signal .
 ```
