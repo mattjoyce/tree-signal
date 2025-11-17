@@ -3,14 +3,14 @@ services:
     build: .
     container_name: tree-signal
     ports:
-      - "8000:8000"  # API server
-      - "8001:8001"  # Web client
+      - "8013:8013"  # API server
+      - "8014:8014"  # Web client
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      # Optional: mount a config directory for future configuration files
-      - ./config:/app/config:ro
+      # Mount appdata directory for configuration and future data persistence
+      - /mnt/user/appdata/tree-signal:/app/data
     networks:
       - tree-signal-net
     labels:

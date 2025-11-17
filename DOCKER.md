@@ -14,11 +14,12 @@ cd tree-signal
 # Build the image
 docker build -t tree-signal .
 
-# Run the container
+# Run the container with appdata mount
 docker run -d \
   --name tree-signal \
-  -p 8000:8000 \
-  -p 8001:8001 \
+  -p 8013:8013 \
+  -p 8014:8014 \
+  -v /mnt/user/appdata/tree-signal:/app/data \
   --restart unless-stopped \
   tree-signal
 ```
@@ -29,26 +30,27 @@ docker run -d \
 # Build directly from GitHub (no clone needed)
 docker build -t tree-signal https://github.com/mattjoyce/tree-signal.git
 
-# Run the container
+# Run the container with appdata mount
 docker run -d \
   --name tree-signal \
-  -p 8000:8000 \
-  -p 8001:8001 \
+  -p 8013:8013 \
+  -p 8014:8014 \
+  -v /mnt/user/appdata/tree-signal:/app/data \
   --restart unless-stopped \
   tree-signal
 ```
 
 ## Access the Application
 
-- **Web Dashboard**: http://localhost:8001
-- **API Server**: http://localhost:8000
-- **Health Check**: http://localhost:8000/healthz
+- **Web Dashboard**: http://localhost:8014
+- **API Server**: http://localhost:8013
+- **Health Check**: http://localhost:8013/healthz
 
 ## Sending Test Messages
 
 ```bash
 # Send a test message
-curl -X POST "http://localhost:8000/v1/messages" \
+curl -X POST "http://localhost:8013/v1/messages" \
   -H "Content-Type: application/json" \
   -d '{
     "channel": "myapp.api.auth",
@@ -71,11 +73,13 @@ curl -X POST "http://localhost:8000/v1/messages" \
 Create a new container with these settings:
 
 - **Name**: `tree-signal`
-- **Repository**: `ghcr.io/mattjoyce/tree-signal:latest`
+- **Repository**: `mattjoyce/tree-signal:latest` (or build from GitHub)
 - **Network Type**: `Bridge`
 - **Port Mappings**:
-  - Container Port: `8000` → Host Port: `8000` (API)
-  - Container Port: `8001` → Host Port: `8001` (Web UI)
+  - Container Port: `8013` → Host Port: `8013` (API)
+  - Container Port: `8014` → Host Port: `8014` (Web UI)
+- **Volume Mappings**:
+  - Container Path: `/app/data` → Host Path: `/mnt/user/appdata/tree-signal`
 - **Restart Policy**: `unless-stopped`
 
 ## Environment Variables
@@ -118,7 +122,7 @@ docker logs tree-signal
 
 ### Verify health
 ```bash
-curl http://localhost:8000/healthz
+curl http://localhost:8013/healthz
 ```
 
 ### Reset data

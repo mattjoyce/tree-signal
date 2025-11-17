@@ -10,10 +10,12 @@ if (params.has("refresh")) {
   window.localStorage.setItem("tree-signal.refreshMs", params.get("refresh"));
 }
 
-// Auto-detect API base URL - if client is on port 8001, assume API is on 8000 on same host
-const DEFAULT_API_BASE = window.location.port === "8001" 
+// Auto-detect API base URL - if client is on port 8014, assume API is on 8013 on same host
+const DEFAULT_API_BASE = window.location.port === "8014" 
+  ? `${window.location.protocol}//${window.location.hostname}:8013`
+  : window.location.port === "8001" 
   ? `${window.location.protocol}//${window.location.hostname}:8000`
-  : "http://localhost:8000";
+  : "http://localhost:8013";
   
 const API_BASE = window.localStorage.getItem("tree-signal.api") || DEFAULT_API_BASE;
 const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;

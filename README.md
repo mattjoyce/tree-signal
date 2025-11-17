@@ -18,19 +18,19 @@ A lightweight treemap-based hierarchical message dashboard perfect for monitorin
 ### Docker (Recommended)
 
 ```bash
-# Build and run
+# Build and run with appdata mount
 git clone https://github.com/mattjoyce/tree-signal.git
 cd tree-signal
 docker build -t tree-signal .
-docker run -d --name tree-signal -p 8000:8000 -p 8001:8001 --restart unless-stopped tree-signal
+docker run -d --name tree-signal -p 8013:8013 -p 8014:8014 -v /mnt/user/appdata/tree-signal:/app/data --restart unless-stopped tree-signal
 ```
 
-Visit **http://localhost:8001** for the dashboard.
+Visit **http://localhost:8014** for the dashboard.
 
 ### Send Test Messages
 
 ```bash
-curl -X POST "http://localhost:8000/v1/messages" \
+curl -X POST "http://localhost:8013/v1/messages" \
   -H "Content-Type: application/json" \
   -d '{
     "channel": "myapp.api.auth",
@@ -51,7 +51,8 @@ curl -X POST "http://localhost:8000/v1/messages" \
 
 1. **Community Applications**: Search for "tree-signal"
 2. **Manual**: Use `mattjoyce/tree-signal:latest` image
-3. **Ports**: 8000 (API), 8001 (Web UI)
+3. **Ports**: 8013 (API), 8014 (Web UI)
+4. **Volume**: `/mnt/user/appdata/tree-signal` → `/app/data`
 
 ## API Endpoints
 

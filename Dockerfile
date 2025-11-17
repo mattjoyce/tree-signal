@@ -24,13 +24,13 @@ RUN useradd -m -u 1000 treesignal && chown -R treesignal:treesignal /app
 USER treesignal
 
 # Expose ports
-# 8000 for API server
-# 8001 for static client files
-EXPOSE 8000 8001
+# 8013 for API server
+# 8014 for static client files
+EXPOSE 8013 8014
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/healthz || exit 1
+    CMD curl -f http://localhost:8013/healthz || exit 1
 
 # Start both servers using a simple script
 COPY docker-entrypoint.sh /app/
