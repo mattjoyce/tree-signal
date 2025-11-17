@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>tree-signal</Name>
+  <Repository>mattjoyce/tree-signal:latest</Repository>
+  <Registry>https://hub.docker.com/</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/mattjoyce/tree-signal</Support>
+  <Project>https://github.com/mattjoyce/tree-signal</Project>
+  <Overview>Tree Signal is a lightweight treemap-based hierarchical message dashboard perfect for monitoring applications, logs, and system events. Features real-time visualization, auto-decay panels, and REST API for message ingestion.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8001]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/mattjoyce/tree-signal/master/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/mattjoyce/tree-signal/master/icon.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>1700000000</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Description>Tree Signal is a lightweight treemap-based hierarchical message dashboard perfect for monitoring applications, logs, and system events.&#xD;
+&#xD;
+Features:&#xD;
+- Hierarchical visualization of messages by channel&#xD;
+- Real-time treemap with panels sized by activity&#xD;
+- Auto-decay: panels fade when inactive&#xD;
+- Very lightweight: ~50MB RAM, minimal CPU&#xD;
+- REST API for message ingestion&#xD;
+- No external dependencies&#xD;
+&#xD;
+Access the web dashboard at http://[IP]:8001&#xD;
+Send messages to the API at http://[IP]:8000/v1/messages&#xD;
+&#xD;
+Perfect for monitoring microservices, logs, alerts, and IoT data.</Description>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>8000</HostPort>
+        <ContainerPort>8000</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+      <Port>
+        <HostPort>8001</HostPort>
+        <ContainerPort>8001</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Data/>
+  <Environment/>
+  <Labels/>
+  <Config Name="API Port" Target="8000" Default="8000" Mode="tcp" Description="API server port for message ingestion" Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="Web UI Port" Target="8001" Default="8001" Mode="tcp" Description="Web dashboard port" Type="Port" Display="always" Required="true" Mask="false">8001</Config>
+</Container>
