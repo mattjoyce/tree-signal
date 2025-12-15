@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""
+Tree Signal CLI - Stream logs to Tree Signal dashboard.
+
+Usage:
+    tail -f /var/log/app.log | tree-signal --channel myapp.logs
+    journalctl -fu myservice | tree-signal --config production.toml
+    docker logs -f container | tree-signal --channel docker.container
+"""
+
+import sys
+from tree_signal_cli.main import main
+
+if __name__ == "__main__":
+    sys.exit(main())

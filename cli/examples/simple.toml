@@ -1,0 +1,13 @@
+# Simple Tree Signal CLI configuration
+# Forward all logs to a single channel
+
+[api]
+url = "http://localhost:8013"
+
+[defaults]
+channel = "logs"
+severity = "info"
+
+[performance]
+batch_size = 10
+rate_limit = 100

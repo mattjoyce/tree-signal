@@ -1,0 +1,54 @@
+# Advanced Tree Signal CLI configuration
+# Multi-service routing with pattern matching
+
+[api]
+url = "http://192.168.20.4:8013"
+# key = "your-api-key-here"  # Optional
+
+[defaults]
+severity = "info"
+channel = "unmatched"
+
+[performance]
+batch_size = 20
+batch_interval = 1000
+rate_limit = 200
+
+[retry]
+max_attempts = 3
+base_delay = 1000
+max_delay = 30000
+
+[logging]
+level = "info"
+debug = false
+dry_run = false
+
+# Routing rules (evaluated in order, first match wins)
+
+[[routing]]
+name = "systemd-errors"
+pattern = '.*\b(error|fatal|critical)\b.*'
+severity = "error"
+channel = "system.errors"
+
+[[routing]]
+name = "nginx-access"
+pattern = '^(?P<ip>[\d.]+).*?"(?P<method>\w+) (?P<path>/\S+).*?" (?P<status>\d+)'
+channel = "nginx.access"
+
+[[routing]]
+name = "docker-logs"
+pattern = '^(?P<timestamp>\S+) (?P<container>\S+) \[(?P<level>\w+)\] (?P<msg>.*)$'
+channel = "docker.{container}"
+severity = "{level}"
+
+[[routing]]
+name = "syslog"
+pattern = '^(?P<timestamp>\w+\s+\d+\s+[\d:]+)\s+(?P<host>\S+)\s+(?P<process>\S+)(\[(?P<pid>\d+)\])?:\s+(?P<message>.*)$'
+channel = "syslog.{host}.{process}"
+
+[[routing]]
+name = "catch-all"
+pattern = ".*"
+channel = "{channel}"

@@ -1,0 +1,33 @@
+# Test config for live server
+[api]
+url = "http://192.168.20.4:8013"
+
+[defaults]
+channel = "cli.unmatched"
+severity = "info"
+
+[performance]
+batch_size = 1
+
+[[routing]]
+name = "errors"
+pattern = '.*\b(ERROR|FATAL|CRITICAL)\b.*'
+severity = "error"
+channel = "cli.errors"
+
+[[routing]]
+name = "warnings"
+pattern = '.*\b(WARN|WARNING)\b.*'
+severity = "warn"
+channel = "cli.warnings"
+
+[[routing]]
+name = "info"
+pattern = '.*\b(INFO)\b.*'
+severity = "info"
+channel = "cli.info"
+
+[[routing]]
+name = "catch-all"
+pattern = ".*"
+channel = "cli.other"

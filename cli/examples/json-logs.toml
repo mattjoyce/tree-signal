@@ -1,0 +1,22 @@
+# JSON log routing configuration
+# Extract channel and severity from structured logs
+
+[api]
+url = "http://localhost:8013"
+
+[defaults]
+channel = "app"
+severity = "info"
+
+[[routing]]
+name = "structured-json"
+pattern = '^(?P<json>\{.*\})$'
+
+[routing.json_extract]
+channel = "service"      # Extracts from log["service"]
+severity = "level"       # Extracts from log["level"]
+message = "msg"          # Extracts from log["msg"]
+
+# Example JSON input:
+# {"service": "api", "level": "error", "msg": "Database timeout", "user": 123}
+# Routes to: channel="api", severity="error", payload="Database timeout"
