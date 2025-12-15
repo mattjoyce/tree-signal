@@ -9,6 +9,13 @@ Usage:
 """
 
 import sys
+from pathlib import Path
+
+# Add the script's directory to Python path so tree_signal_cli module can be found
+script_dir = Path(__file__).resolve().parent
+if script_dir not in sys.path:
+    sys.path.insert(0, str(script_dir))
+
 from tree_signal_cli.main import main
 
 if __name__ == "__main__":
