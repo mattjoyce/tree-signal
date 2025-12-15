@@ -103,6 +103,10 @@ url = "http://localhost:8013"
 channel = "logs"
 severity = "info"
 
+[decay]
+hold_seconds = 30.0
+decay_seconds = 10.0
+
 [performance]
 batch_size = 10
 rate_limit = 100
@@ -116,6 +120,10 @@ url = "http://192.168.20.4:8013"
 
 [defaults]
 channel = "unmatched"
+
+[decay]
+hold_seconds = 30.0
+decay_seconds = 10.0
 
 # Route nginx access logs
 [[routing]]

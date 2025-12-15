@@ -8,6 +8,10 @@ url = "http://localhost:8013"
 channel = "app"
 severity = "info"
 
+[decay]
+hold_seconds = 30.0
+decay_seconds = 10.0
+
 [[routing]]
 name = "structured-json"
 pattern = '^(?P<json>\{.*\})$'

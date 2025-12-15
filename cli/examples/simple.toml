@@ -8,6 +8,10 @@ url = "http://localhost:8013"
 channel = "logs"
 severity = "info"
 
+[decay]
+hold_seconds = 30.0
+decay_seconds = 10.0
+
 [performance]
 batch_size = 10
 rate_limit = 100

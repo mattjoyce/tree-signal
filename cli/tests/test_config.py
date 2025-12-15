@@ -92,6 +92,7 @@ def test_default_config():
 
     assert "api" in config
     assert "defaults" in config
+    assert "decay" in config
     assert "performance" in config
     assert "retry" in config
     assert "logging" in config
@@ -99,6 +100,8 @@ def test_default_config():
 
     assert config["api"]["url"] == "http://localhost:8013"
     assert config["defaults"]["severity"] == "info"
+    assert config["decay"]["hold_seconds"] == 30.0
+    assert config["decay"]["decay_seconds"] == 10.0
     assert config["performance"]["batch_size"] == 1
 
 

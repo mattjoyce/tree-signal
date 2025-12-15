@@ -144,6 +144,10 @@ def get_default_config() -> dict[str, Any]:
             "severity": "info",
             "channel": None,  # Required if no routing matches
         },
+        "decay": {
+            "hold_seconds": 30.0,  # Duration to hold full weight before decay begins
+            "decay_seconds": 10.0,  # Duration to fade from full weight to removal
+        },
         "performance": {
             "batch_size": 1,
             "batch_interval": 1000,
