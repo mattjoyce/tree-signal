@@ -11,6 +11,18 @@ from .models import (
 )
 from .tree_service import ChannelTreeService
 from .color_palette import ColorScheme, ColorPaletteGenerator, ColorService
+from .config import (
+    TreeSignalConfig,
+    ClientConfig,
+    ClientColors,
+    ClientUI,
+    DecayConfig,
+    HistoryConfig,
+    ServerConfig,
+    CleanupConfig,
+    get_config,
+    reload_config,
+)
 
 __all__ = [
     "ChannelPath",
@@ -24,4 +36,14 @@ __all__ = [
     "ColorScheme",
     "ColorPaletteGenerator",
     "ColorService",
+    "TreeSignalConfig",
+    "ClientConfig",
+    "ClientColors",
+    "ClientUI",
+    "DecayConfig",
+    "HistoryConfig",
+    "ServerConfig",
+    "CleanupConfig",
+    "get_config",
+    "reload_config",
 ]

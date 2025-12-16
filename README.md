@@ -54,12 +54,34 @@ curl -X POST "http://localhost:8013/v1/messages" \
 3. **Ports**: 8013 (API), 8014 (Web UI)
 4. **Volume**: `/mnt/user/appdata/tree-signal` → `/app/data`
 
+## Configuration
+
+Tree Signal supports extensive configuration through TOML files:
+
+```bash
+# Copy example config and customize
+cp config.toml.example config.toml
+# Edit config.toml to set refresh rates, colors, decay times, etc.
+# Restart server to apply changes
+```
+
+**Key configuration options:**
+- Dashboard refresh interval and appearance
+- Color assignment and inheritance modes
+- Message decay timing
+- Panel size and gaps
+- Timestamp formats
+
+See [CONFIG.md](CONFIG.md) for complete configuration guide.
+
 ## API Endpoints
 
 - `POST /v1/messages` - Send messages
 - `GET /v1/layout` - Current treemap layout
 - `GET /v1/messages/{channel}` - Message history
+- `GET /v1/client/config` - Client configuration
 - `POST /v1/control/decay` - Configure decay settings
+- `POST /v1/control/colors` - Configure color modes
 
 ## Development
 
@@ -82,6 +104,7 @@ uvicorn tree_signal.api.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Documentation
 
+- [Configuration Guide](CONFIG.md)
 - [Docker Deployment Guide](DOCKER.md)
 - [API Documentation](tree_signal_spec.md)
 - [Development Setup](src/README.md)

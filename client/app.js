@@ -1,5 +1,64 @@
-const params = new URLSearchParams(window.location.search);
+// Configuration management
+let CONFIG = null;
 
+async function loadConfig() {
+  try {
+    // Auto-detect API base URL for config fetch
+    const tempApiBase = window.location.port === "8014"
+      ? `${window.location.protocol}//${window.location.hostname}:8013`
+      : window.location.port === "8001"
+      ? `${window.location.protocol}//${window.location.hostname}:8000`
+      : `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
+
+    const response = await fetch(`${tempApiBase}/v1/client/config`);
+    if (response.ok) {
+      CONFIG = await response.json();
+      console.log('Loaded server config:', CONFIG);
+    } else {
+      console.warn('Failed to load server config, using defaults');
+      CONFIG = getDefaultConfig();
+    }
+  } catch (error) {
+    console.error('Error loading config:', error);
+    CONFIG = getDefaultConfig();
+  }
+}
+
+function getDefaultConfig() {
+  const baseUrl = window.location.port === "8014"
+    ? `${window.location.protocol}//${window.location.hostname}:8013`
+    : window.location.port === "8001"
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
+
+  return {
+    api_base_url: baseUrl,
+    refresh_interval_ms: 5000,
+    show_debug: false,
+    version: "0.2.0",
+    colors: {
+      assignment_mode: "increment",
+      inheritance_mode: "unique",
+      palette: null
+    },
+    ui: {
+      min_panel_size: 5.0,
+      panel_gap: 0.6,
+      font_family: "Fira Code, monospace",
+      show_timestamps: true,
+      timestamp_format: "locale"
+    }
+  };
+}
+
+// Configuration precedence: URL params > localStorage > server config
+function getSetting(key, configValue) {
+  const localValue = window.localStorage.getItem(`tree-signal.${key}`);
+  return localValue !== null ? localValue : configValue;
+}
+
+// Handle URL parameters (highest priority)
+const params = new URLSearchParams(window.location.search);
 if (params.has("api")) {
   window.localStorage.setItem("tree-signal.api", params.get("api"));
 }
@@ -13,33 +72,60 @@ if (params.has("debug")) {
   window.localStorage.setItem("tree-signal.showDebug", params.get("debug"));
 }
 
-// Auto-detect API base URL
-// - Port 8001 (dev client) → API on 8000
-// - Port 8014 (old Docker) → API on 8013
-// - Otherwise (unified server) → same origin as dashboard
-const DEFAULT_API_BASE = window.location.port === "8014"
-  ? `${window.location.protocol}//${window.location.hostname}:8013`
-  : window.location.port === "8001"
-  ? `${window.location.protocol}//${window.location.hostname}:8000`
-  : `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-  
-const API_BASE = window.localStorage.getItem("tree-signal.api") || DEFAULT_API_BASE;
-const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
-const REFRESH_INTERVAL_MS = Number(window.localStorage.getItem("tree-signal.refreshMs") || "5000");
-const SHOW_DEBUG = window.localStorage.getItem("tree-signal.showDebug") === "true";
+// Load server configuration
+await loadConfig();
 
+// Apply configuration with precedence
+const API_BASE = getSetting('api', CONFIG.api_base_url || '');
+const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
+const REFRESH_INTERVAL_MS = Number(getSetting('refreshMs', CONFIG.refresh_interval_ms));
+const SHOW_DEBUG = getSetting('showDebug', String(CONFIG.show_debug)) === "true";
+const CLIENT_VERSION = `v${CONFIG.version}`;
+
+// DOM elements
 const layoutStage = document.querySelector("#layout-stage");
 const lastRefresh = document.querySelector("#last-refresh");
 const refreshButton = document.querySelector("#refresh-button");
 const intervalDisplay = document.querySelector("#refresh-interval");
 const clientVersionLabel = document.querySelector("#client-version");
 
-const CLIENT_VERSION = "v0.2.0";
+// Apply UI configuration
+if (CONFIG.ui) {
+  document.documentElement.style.setProperty('--font-family', CONFIG.ui.font_family);
+  document.documentElement.style.setProperty('--panel-gap', `${CONFIG.ui.panel_gap}%`);
+}
+
 if (clientVersionLabel) {
   clientVersionLabel.textContent = CLIENT_VERSION;
 }
 
 let refreshTimer = null;
+
+function formatTimestamp(isoString) {
+  const date = new Date(isoString);
+  switch (CONFIG.ui.timestamp_format) {
+    case 'iso':
+      return isoString;
+    case 'relative':
+      return getRelativeTime(date);
+    case 'locale':
+    default:
+      return date.toLocaleTimeString();
+  }
+}
+
+function getRelativeTime(date) {
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 function requestHeaders() {
   const headers = new Headers();
@@ -214,12 +300,17 @@ function renderLayout(frames, historyMap) {
       const snippet = document.createElement("div");
       snippet.className = "snippet";
       snippet.dataset.severity = latest.severity;
-      const time = document.createElement("time");
-      time.dateTime = latest.received_at;
-      time.textContent = new Date(latest.received_at).toLocaleTimeString();
+
+      if (CONFIG.ui.show_timestamps) {
+        const time = document.createElement("time");
+        time.dateTime = latest.received_at;
+        time.textContent = formatTimestamp(latest.received_at);
+        snippet.appendChild(time);
+      }
+
       const payload = document.createElement("div");
       payload.textContent = latest.payload;
-      snippet.append(time, payload);
+      snippet.append(payload);
       messagesContainer.appendChild(snippet);
     }
 

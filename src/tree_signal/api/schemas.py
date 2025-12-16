@@ -6,7 +6,16 @@ from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, model_validator
 
-from tree_signal.core import ColorScheme, LayoutFrame, LayoutRect, Message, PanelState
+from tree_signal.core import (
+    ColorScheme,
+    LayoutFrame,
+    LayoutRect,
+    Message,
+    PanelState,
+    ClientConfig,
+    ClientColors,
+    ClientUI,
+)
 
 
 class MessageIngress(BaseModel):
@@ -144,6 +153,64 @@ class ColorConfigResponse(BaseModel):
     inheritance_mode: str
 
 
+class ClientColorsResponse(BaseModel):
+    """Client color configuration response."""
+
+    assignment_mode: str
+    inheritance_mode: str
+    palette: Optional[List[str]] = None
+
+    @classmethod
+    def from_domain(cls, colors: ClientColors) -> "ClientColorsResponse":
+        return cls(
+            assignment_mode=colors.assignment_mode,
+            inheritance_mode=colors.inheritance_mode,
+            palette=colors.palette,
+        )
+
+
+class ClientUIResponse(BaseModel):
+    """Client UI configuration response."""
+
+    min_panel_size: float
+    panel_gap: float
+    font_family: str
+    show_timestamps: bool
+    timestamp_format: str
+
+    @classmethod
+    def from_domain(cls, ui: ClientUI) -> "ClientUIResponse":
+        return cls(
+            min_panel_size=ui.min_panel_size,
+            panel_gap=ui.panel_gap,
+            font_family=ui.font_family,
+            show_timestamps=ui.show_timestamps,
+            timestamp_format=ui.timestamp_format,
+        )
+
+
+class ClientConfigResponse(BaseModel):
+    """Complete client configuration response."""
+
+    api_base_url: str
+    refresh_interval_ms: int
+    show_debug: bool
+    version: str
+    colors: ClientColorsResponse
+    ui: ClientUIResponse
+
+    @classmethod
+    def from_domain(cls, config: ClientConfig) -> "ClientConfigResponse":
+        return cls(
+            api_base_url=config.api_base_url,
+            refresh_interval_ms=config.refresh_interval_ms,
+            show_debug=config.show_debug,
+            version=config.version,
+            colors=ClientColorsResponse.from_domain(config.colors),
+            ui=ClientUIResponse.from_domain(config.ui),
+        )
+
+
 __all__ = [
     "ColorConfig",
     "ColorConfigResponse",
@@ -156,4 +223,7 @@ __all__ = [
     "MessageIngressResponse",
     "MessageRecord",
     "PruneRequest",
+    "ClientColorsResponse",
+    "ClientUIResponse",
+    "ClientConfigResponse",
 ]

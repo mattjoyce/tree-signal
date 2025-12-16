@@ -13,10 +13,11 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from tree_signal.core import ChannelTreeService, ColorService, Message, MessageSeverity
+from tree_signal.core import ChannelTreeService, ColorService, Message, MessageSeverity, get_config
 from tree_signal.layout import LinearLayoutGenerator
 
 from .schemas import (
+    ClientConfigResponse,
     ColorConfig,
     ColorConfigResponse,
     DecayConfig,
@@ -28,13 +29,15 @@ from .schemas import (
     PruneRequest,
 )
 
-# Configuration
-COLOR_ASSIGNMENT_MODE = os.getenv("COLOR_ASSIGNMENT_MODE", "increment")
-COLOR_INHERITANCE_MODE = os.getenv("COLOR_INHERITANCE_MODE", "unique")
+# Load configuration at startup
+config = get_config()
 
-app = FastAPI(title="Tree Signal", version="0.2.0")
+app = FastAPI(title="Tree Signal", version=config.client.version)
 app.state.tree_service = ChannelTreeService()
-app.state.color_service = ColorService(mode=COLOR_ASSIGNMENT_MODE, inheritance_mode=COLOR_INHERITANCE_MODE)
+app.state.color_service = ColorService(
+    mode=config.client.colors.assignment_mode,
+    inheritance_mode=config.client.colors.inheritance_mode
+)
 app.state.layout_generator = LinearLayoutGenerator(color_service=app.state.color_service)
 
 app.add_middleware(
@@ -134,6 +137,14 @@ async def get_colors() -> ColorConfigResponse:
     return ColorConfigResponse(
         assignment_mode=color_service.mode, inheritance_mode=color_service.inheritance_mode
     )
+
+
+@app.get("/v1/client/config", response_model=ClientConfigResponse)
+async def get_client_config() -> ClientConfigResponse:
+    """Return client configuration for dashboard."""
+
+    config = get_config()
+    return ClientConfigResponse.from_domain(config.client)
 
 
 @app.post("/v1/control/prune", status_code=204, response_class=Response)

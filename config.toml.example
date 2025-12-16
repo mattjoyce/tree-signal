@@ -1,0 +1,124 @@
+# Tree Signal Configuration Example
+# Copy this file to config.toml and customize for your deployment
+
+# Server Configuration
+[server]
+host = "0.0.0.0"
+port = 8013
+
+# Message Decay Configuration
+[decay]
+# Duration to hold full weight before decay begins (seconds)
+hold_seconds = 30.0
+# Duration to fade from full weight to removal (seconds)
+decay_seconds = 10.0
+
+# Message History Configuration
+[history]
+# Maximum messages to keep per channel
+max_messages = 100
+
+# Cleanup Task Configuration
+[cleanup]
+# Interval between cleanup runs (seconds)
+interval_seconds = 60.0
+
+# Client Dashboard Configuration
+[client]
+# Default API base URL (empty string = same origin as dashboard)
+api_base_url = ""
+
+# Auto-refresh interval in milliseconds
+refresh_interval_ms = 5000
+
+# Enable debug display by default
+show_debug = false
+
+# Application version
+version = "0.2.0"
+
+# Client Color Configuration
+[client.colors]
+# Color assignment mode: "increment" | "hash"
+# - increment: Sequential color assignment (first=0°, second=101°, etc.)
+# - hash: Deterministic SHA256-based color assignment
+assignment_mode = "increment"
+
+# Color inheritance mode: "unique" | "root" | "family"
+# - unique: Every channel gets distinct color
+# - root: Children inherit root hue with +5° variations (color families)
+# - family: Children share exact hue, vary lightness by depth
+inheritance_mode = "unique"
+
+# Optional: Custom color palette (overrides built-in HSL generation)
+# palette = ["#ff0000", "#00ff00", "#0000ff"]
+
+# Client UI Configuration
+[client.ui]
+# Minimum panel size threshold (percentage)
+min_panel_size = 5.0
+
+# Gap between panels (percentage)
+panel_gap = 0.6
+
+# Font family for the dashboard
+font_family = "Fira Code, monospace"
+
+# Show timestamps in messages
+show_timestamps = true
+
+# Timestamp format: "locale" | "iso" | "relative"
+# - locale: Browser locale format (e.g., "3:45:12 PM")
+# - iso: ISO 8601 format (e.g., "2025-12-17T15:45:12.123Z")
+# - relative: Relative time (e.g., "5m ago", "2h ago")
+timestamp_format = "locale"
+
+
+# ==========================================
+# Example Configurations for Different Use Cases
+# ==========================================
+
+# Corporate Deployment
+# --------------------
+# [client]
+# api_base_url = "https://tree-signal.company.com"
+# refresh_interval_ms = 10000
+# show_debug = false
+#
+# [client.colors]
+# assignment_mode = "increment"
+# inheritance_mode = "root"
+# # Company brand colors
+# palette = ["#003366", "#006699", "#3399CC", "#66CCFF"]
+#
+# [client.ui]
+# font_family = "Roboto, sans-serif"
+# timestamp_format = "locale"
+
+# Development Environment
+# ------------------------
+# [client]
+# api_base_url = ""  # Same origin
+# refresh_interval_ms = 1000  # Fast refresh for dev
+# show_debug = true
+#
+# [client.ui]
+# show_timestamps = true
+# timestamp_format = "iso"
+#
+# [decay]
+# hold_seconds = 5.0   # Quick decay for testing
+# decay_seconds = 2.0
+
+# High-Traffic Monitoring
+# -----------------------
+# [client]
+# refresh_interval_ms = 2000  # 2 second refresh
+#
+# [client.ui]
+# min_panel_size = 2.0  # Show smaller panels
+# panel_gap = 0.3       # Tighter layout
+# timestamp_format = "relative"
+#
+# [history]
+# max_messages = 50  # Reduce memory usage
