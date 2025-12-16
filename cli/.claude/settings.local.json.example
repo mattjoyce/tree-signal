@@ -1,0 +1,5 @@
+{
+  "env": {
+    "TREE_SIGNAL_URL": "http://localhost:8013"
+  }
+}

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, model_validator
 
-from tree_signal.core import LayoutFrame, LayoutRect, Message, PanelState
+from tree_signal.core import ColorScheme, LayoutFrame, LayoutRect, Message, PanelState
 
 
 class MessageIngress(BaseModel):
@@ -58,12 +58,31 @@ class LayoutRectModel(BaseModel):
         return cls(x=rect.x, y=rect.y, width=rect.width, height=rect.height)
 
 
+class ColorSchemeModel(BaseModel):
+    hue: int
+    background: str
+    border: str
+    normal: str
+    highlight: str
+
+    @classmethod
+    def from_domain(cls, scheme: ColorScheme) -> "ColorSchemeModel":
+        return cls(
+            hue=scheme.hue,
+            background=scheme.background,
+            border=scheme.border,
+            normal=scheme.normal,
+            highlight=scheme.highlight,
+        )
+
+
 class LayoutFrameResponse(BaseModel):
     path: Tuple[str, ...]
     rect: LayoutRectModel
     state: PanelState
     weight: float
     generated_at: datetime
+    colors: ColorSchemeModel
 
     @classmethod
     def from_domain(cls, frame: LayoutFrame) -> "LayoutFrameResponse":
@@ -73,6 +92,7 @@ class LayoutFrameResponse(BaseModel):
             state=frame.state,
             weight=frame.weight,
             generated_at=frame.generated_at,
+            colors=ColorSchemeModel.from_domain(frame.colors),
         )
 
 
@@ -102,6 +122,7 @@ class PruneRequest(BaseModel):
 
 
 __all__ = [
+    "ColorSchemeModel",
     "DecayConfig",
     "DecayConfigResponse",
     "LayoutFrameResponse",

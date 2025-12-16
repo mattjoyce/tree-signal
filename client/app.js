@@ -169,6 +169,14 @@ function renderLayout(frames, historyMap) {
     }
     cell.style.zIndex = String(depth + 1);
 
+    // Apply color scheme if available
+    if (frame.colors) {
+      cell.style.setProperty('--channel-bg', frame.colors.background);
+      cell.style.setProperty('--channel-border', frame.colors.border);
+      cell.style.setProperty('--channel-normal', frame.colors.normal);
+      cell.style.setProperty('--channel-highlight', frame.colors.highlight);
+    }
+
     const gapPercent = depth === 0 ? 0 : 0.6;
     const widthPercent = Math.max(relativeRect.width * 100 - gapPercent * 2, 0);
     const heightPercent = Math.max(relativeRect.height * 100 - gapPercent * 2, 0);

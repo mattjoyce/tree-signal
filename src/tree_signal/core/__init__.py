@@ -10,14 +10,18 @@ from .models import (
     ChannelNodeState,
 )
 from .tree_service import ChannelTreeService
+from .color_palette import ColorScheme, ColorPaletteGenerator, ColorService
 
 __all__ = [
     "ChannelPath",
-    "Message", 
+    "Message",
     "MessageSeverity",
     "PanelState",
     "LayoutRect",
     "LayoutFrame",
     "ChannelNodeState",
     "ChannelTreeService",
+    "ColorScheme",
+    "ColorPaletteGenerator",
+    "ColorService",
 ]

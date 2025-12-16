@@ -4,14 +4,22 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List, Tuple
 
-from tree_signal.core import ChannelNodeState, ChannelTreeService, LayoutFrame, LayoutRect, PanelState
+from tree_signal.core import (
+    ChannelNodeState,
+    ChannelTreeService,
+    ColorService,
+    LayoutFrame,
+    LayoutRect,
+    PanelState,
+)
 
 
 class LinearLayoutGenerator:
     """Generate nested rectangles by alternating split orientation per depth."""
 
-    def __init__(self, min_extent: float = 0.02) -> None:
+    def __init__(self, min_extent: float = 0.02, color_service: ColorService | None = None) -> None:
         self._min_extent = min_extent
+        self._color_service = color_service or ColorService()
 
     def generate(self, tree: ChannelTreeService, *, timestamp: datetime | None = None) -> List[LayoutFrame]:
         """Produce layout frames for all nodes except the synthetic root."""
@@ -44,6 +52,7 @@ class LinearLayoutGenerator:
         children = list(node.children.values())
         if not children:
             if node.path:
+                colors = self._color_service.get_scheme_for_channel(node.path)
                 frames.append(
                     LayoutFrame(
                         path=node.path,
@@ -51,6 +60,7 @@ class LinearLayoutGenerator:
                         state=self._resolve_state(node, timestamp),
                         weight=node.weight,
                         generated_at=timestamp,
+                        colors=colors,
                     )
                 )
             return
@@ -83,6 +93,7 @@ class LinearLayoutGenerator:
                 height=children_fraction * rect.height,
             )
 
+            colors = self._color_service.get_scheme_for_channel(node.path)
             frames.append(
                 LayoutFrame(
                     path=node.path,
@@ -90,6 +101,7 @@ class LinearLayoutGenerator:
                     state=self._resolve_state(node, timestamp),
                     weight=node.weight,
                     generated_at=timestamp,
+                    colors=colors,
                 )
             )
         else:

@@ -1,6 +1,7 @@
 """API entrypoint for the Tree Signal service."""
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
@@ -9,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from tree_signal.core import ChannelTreeService, Message, MessageSeverity
+from tree_signal.core import ChannelTreeService, ColorService, Message, MessageSeverity
 from tree_signal.layout import LinearLayoutGenerator
 
 from .schemas import (
@@ -22,9 +23,13 @@ from .schemas import (
     PruneRequest,
 )
 
+# Configuration
+COLOR_ASSIGNMENT_MODE = os.getenv("COLOR_ASSIGNMENT_MODE", "increment")
+
 app = FastAPI(title="Tree Signal", version="0.1.0")
 app.state.tree_service = ChannelTreeService()
-app.state.layout_generator = LinearLayoutGenerator()
+app.state.color_service = ColorService(mode=COLOR_ASSIGNMENT_MODE)
+app.state.layout_generator = LinearLayoutGenerator(color_service=app.state.color_service)
 
 app.add_middleware(
     CORSMiddleware,

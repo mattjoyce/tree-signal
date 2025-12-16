@@ -4,7 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
+
+if TYPE_CHECKING:
+    from .color_palette import ColorScheme
 
 ChannelPath = Tuple[str, ...]
 
@@ -63,6 +66,7 @@ class LayoutFrame:
     state: PanelState
     weight: float
     generated_at: datetime
+    colors: "ColorScheme"
 
 
 @dataclass(slots=True)
