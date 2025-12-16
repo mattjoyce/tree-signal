@@ -1,6 +1,6 @@
 [project]
 name = "tree-signal"
-version = "0.1.0"
+version = "0.2.0"
 description = "Treemap-based hierarchical layout prototype."
 authors = [{ name = "Tree Signal Maintainers" }]
 requires-python = ">=3.11"

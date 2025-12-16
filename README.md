@@ -25,7 +25,7 @@ docker build -t tree-signal .
 docker run -d --name tree-signal -p 8013:8013 -p 8014:8014 -v /mnt/user/appdata/tree-signal:/app/data --restart unless-stopped tree-signal
 ```
 
-Visit **http://localhost:8014** for the dashboard.
+Visit **http://localhost:8014** for the dashboard (Docker) or **http://localhost:8000** (local dev).
 
 ### Send Test Messages
 
@@ -71,9 +71,13 @@ python3.11 -m venv venv
 source venv/bin/activate
 pip install -e .
 
-# Run servers
-uvicorn tree_signal.api.main:app --reload --port 8000 &
-python -m http.server --directory client 8001
+# Run single server (serves both API and dashboard)
+uvicorn tree_signal.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Access:
+# - Dashboard: http://localhost:8000
+# - API: http://localhost:8000/v1/*
+# - Docs: http://localhost:8000/docs
 ```
 
 ## Documentation

@@ -31,7 +31,7 @@ const refreshButton = document.querySelector("#refresh-button");
 const intervalDisplay = document.querySelector("#refresh-interval");
 const clientVersionLabel = document.querySelector("#client-version");
 
-const CLIENT_VERSION = "v0.1.0";
+const CLIENT_VERSION = "v0.2.0";
 if (clientVersionLabel) {
   clientVersionLabel.textContent = CLIENT_VERSION;
 }

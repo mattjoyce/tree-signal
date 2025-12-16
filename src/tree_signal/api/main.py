@@ -6,9 +6,12 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from tree_signal.core import ChannelTreeService, ColorService, Message, MessageSeverity
 from tree_signal.layout import LinearLayoutGenerator
@@ -29,7 +32,7 @@ from .schemas import (
 COLOR_ASSIGNMENT_MODE = os.getenv("COLOR_ASSIGNMENT_MODE", "increment")
 COLOR_INHERITANCE_MODE = os.getenv("COLOR_INHERITANCE_MODE", "unique")
 
-app = FastAPI(title="Tree Signal", version="0.1.0")
+app = FastAPI(title="Tree Signal", version="0.2.0")
 app.state.tree_service = ChannelTreeService()
 app.state.color_service = ColorService(mode=COLOR_ASSIGNMENT_MODE, inheritance_mode=COLOR_INHERITANCE_MODE)
 app.state.layout_generator = LinearLayoutGenerator(color_service=app.state.color_service)
@@ -58,18 +61,6 @@ def get_layout_generator() -> LinearLayoutGenerator:
 async def healthcheck() -> JSONResponse:
     """Return a simple heartbeat used by deployment tooling."""
     return JSONResponse(content={"status": "ok"})
-
-
-@app.get("/", summary="Service metadata")
-async def root() -> JSONResponse:
-    """Lightweight landing endpoint for manual verification."""
-    return JSONResponse(
-        content={
-            "service": "tree-signal",
-            "status": "ok",
-            "message": "Treemap prototype is warming up.",
-        }
-    )
 
 
 @app.post("/v1/messages", response_model=MessageIngressResponse, status_code=202)
@@ -170,3 +161,9 @@ def _parse_channel(raw: str) -> tuple[str, ...]:
     if not segments:
         raise HTTPException(status_code=422, detail="channel path must not be empty")
     return segments
+
+
+# Mount static files (client dashboard) - must be last to not override API routes
+CLIENT_DIR = Path(__file__).parent.parent.parent.parent / "client"
+if CLIENT_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(CLIENT_DIR), html=True), name="static")
