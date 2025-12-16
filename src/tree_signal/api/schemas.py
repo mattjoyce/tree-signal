@@ -121,7 +121,32 @@ class PruneRequest(BaseModel):
     channel: str
 
 
+class ColorConfig(BaseModel):
+    """Request payload for adjusting color configuration."""
+
+    assignment_mode: str = Field(..., description="Color assignment mode: increment or hash")
+    inheritance_mode: str = Field(..., description="Color inheritance: unique, root, or family")
+
+    @model_validator(mode="after")
+    def validate_modes(self) -> "ColorConfig":
+        valid_assignment = ["increment", "hash"]
+        valid_inheritance = ["unique", "root", "family"]
+
+        if self.assignment_mode not in valid_assignment:
+            raise ValueError(f"assignment_mode must be one of {valid_assignment}")
+        if self.inheritance_mode not in valid_inheritance:
+            raise ValueError(f"inheritance_mode must be one of {valid_inheritance}")
+        return self
+
+
+class ColorConfigResponse(BaseModel):
+    assignment_mode: str
+    inheritance_mode: str
+
+
 __all__ = [
+    "ColorConfig",
+    "ColorConfigResponse",
     "ColorSchemeModel",
     "DecayConfig",
     "DecayConfigResponse",

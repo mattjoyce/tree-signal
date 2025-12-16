@@ -14,6 +14,8 @@ from tree_signal.core import ChannelTreeService, ColorService, Message, MessageS
 from tree_signal.layout import LinearLayoutGenerator
 
 from .schemas import (
+    ColorConfig,
+    ColorConfigResponse,
     DecayConfig,
     DecayConfigResponse,
     LayoutFrameResponse,
@@ -25,10 +27,11 @@ from .schemas import (
 
 # Configuration
 COLOR_ASSIGNMENT_MODE = os.getenv("COLOR_ASSIGNMENT_MODE", "increment")
+COLOR_INHERITANCE_MODE = os.getenv("COLOR_INHERITANCE_MODE", "unique")
 
 app = FastAPI(title="Tree Signal", version="0.1.0")
 app.state.tree_service = ChannelTreeService()
-app.state.color_service = ColorService(mode=COLOR_ASSIGNMENT_MODE)
+app.state.color_service = ColorService(mode=COLOR_ASSIGNMENT_MODE, inheritance_mode=COLOR_INHERITANCE_MODE)
 app.state.layout_generator = LinearLayoutGenerator(color_service=app.state.color_service)
 
 app.add_middleware(
@@ -114,6 +117,32 @@ async def update_decay(config: DecayConfig) -> DecayConfigResponse:
     hold, decay = config.to_timedelta()
     tree_service.configure_decay(hold=hold, decay=decay)
     return DecayConfigResponse(hold_seconds=config.hold_seconds, decay_seconds=config.decay_seconds)
+
+
+@app.post("/v1/control/colors", response_model=ColorConfigResponse)
+async def update_colors(config: ColorConfig) -> ColorConfigResponse:
+    """Update color assignment and inheritance configuration."""
+
+    # Create new ColorService with updated configuration
+    new_color_service = ColorService(mode=config.assignment_mode, inheritance_mode=config.inheritance_mode)
+
+    # Update app state
+    app.state.color_service = new_color_service
+    app.state.layout_generator = LinearLayoutGenerator(color_service=new_color_service)
+
+    return ColorConfigResponse(
+        assignment_mode=config.assignment_mode, inheritance_mode=config.inheritance_mode
+    )
+
+
+@app.get("/v1/control/colors", response_model=ColorConfigResponse)
+async def get_colors() -> ColorConfigResponse:
+    """Get current color configuration."""
+
+    color_service = app.state.color_service
+    return ColorConfigResponse(
+        assignment_mode=color_service.mode, inheritance_mode=color_service.inheritance_mode
+    )
 
 
 @app.post("/v1/control/prune", status_code=204, response_class=Response)

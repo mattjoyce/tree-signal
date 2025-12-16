@@ -125,16 +125,20 @@ class ColorPaletteGenerator:
 class ColorService:
     """Manages color assignment for channels."""
 
-    def __init__(self, mode: str = "increment") -> None:
+    def __init__(self, mode: str = "increment", inheritance_mode: str = "unique") -> None:
         """Initialize the color service.
 
         Args:
             mode: Assignment mode - "increment" (sequential) or "hash" (deterministic)
+            inheritance_mode: Color inheritance - "unique", "root", or "family"
         """
         self.mode = mode
+        self.inheritance_mode = inheritance_mode
         self.generator = ColorPaletteGenerator(increment=101, start=0)
         self.channel_index_map: Dict[str, int] = {}
+        self.root_index_map: Dict[str, int] = {}
         self.next_index: int = 0
+        self.next_root_index: int = 0
 
     def get_scheme_for_channel(self, channel_path: Tuple[str, ...]) -> ColorScheme:
         """Get color scheme for a channel path.
@@ -145,12 +149,16 @@ class ColorService:
         Returns:
             ColorScheme object with background, border, normal, highlight colors
         """
-        channel = ".".join(channel_path)
-
-        if self.mode == "increment":
-            return self._get_incremental_scheme(channel)
-        else:
-            return self._get_hash_scheme(channel)
+        if self.inheritance_mode == "root":
+            return self._get_root_inherited_scheme(channel_path)
+        elif self.inheritance_mode == "family":
+            return self._get_family_scheme(channel_path)
+        else:  # unique
+            channel = ".".join(channel_path)
+            if self.mode == "increment":
+                return self._get_incremental_scheme(channel)
+            else:
+                return self._get_hash_scheme(channel)
 
     def _get_incremental_scheme(self, channel: str) -> ColorScheme:
         """Get color scheme using sequential index assignment."""
@@ -164,6 +172,79 @@ class ColorService:
     def _get_hash_scheme(self, channel: str) -> ColorScheme:
         """Get color scheme using deterministic hash."""
         return self.generator.get_scheme_for_hash(channel)
+
+    def _get_root_inherited_scheme(self, channel_path: Tuple[str, ...]) -> ColorScheme:
+        """Get color scheme with root-based inheritance.
+
+        Root channels get distinct colors, children get slight hue variations.
+        Example: prod=0°, prod.api=5°, prod.db=10°
+        """
+        if not channel_path:
+            return self.generator.get_scheme_for_index(0)
+
+        root = channel_path[0]
+        depth = len(channel_path)
+
+        # Assign color to root channel
+        if root not in self.root_index_map:
+            if self.mode == "increment":
+                self.root_index_map[root] = self.next_root_index
+                self.next_root_index += 1
+            else:  # hash mode
+                hash_bytes = hashlib.sha256(root.encode()).digest()
+                self.root_index_map[root] = int.from_bytes(hash_bytes[:4], "big") % 1000
+
+        root_index = self.root_index_map[root]
+
+        # Root gets base hue, children get +5° per level
+        hue_offset = (depth - 1) * 5
+        modified_index = root_index + (hue_offset // self.generator.increment)
+
+        base_hue = (self.generator.start + (self.generator.increment * root_index)) % 360
+        final_hue = (base_hue + hue_offset) % 360
+
+        return self.generator._generate_scheme(final_hue)
+
+    def _get_family_scheme(self, channel_path: Tuple[str, ...]) -> ColorScheme:
+        """Get color scheme with family-based inheritance.
+
+        Channels inherit parent's hue but vary lightness by depth.
+        Example: prod=50% light, prod.api=60% light, prod.api.users=70% light
+        """
+        if not channel_path:
+            return self.generator.get_scheme_for_index(0)
+
+        root = channel_path[0]
+        depth = len(channel_path)
+
+        # Assign base hue to root channel
+        if root not in self.root_index_map:
+            if self.mode == "increment":
+                self.root_index_map[root] = self.next_root_index
+                self.next_root_index += 1
+            else:  # hash mode
+                hash_bytes = hashlib.sha256(root.encode()).digest()
+                self.root_index_map[root] = int.from_bytes(hash_bytes[:4], "big") % 1000
+
+        root_index = self.root_index_map[root]
+        base_hue = (self.generator.start + (self.generator.increment * root_index)) % 360
+
+        # Vary lightness by depth: 15%→25%→35% for bg, 65%→70%→75% for normal
+        lightness_offset = (depth - 1) * 5
+
+        # Create custom scheme with adjusted lightness
+        bg_light = min(15 + lightness_offset, 25)
+        border_light = min(30 + lightness_offset, 40)
+        normal_light = min(65 + lightness_offset, 80)
+        highlight_light = min(85 + lightness_offset, 95)
+
+        return ColorScheme(
+            hue=base_hue,
+            background=self.generator._hsl_to_hex(base_hue, 35, bg_light),
+            border=self.generator._hsl_to_hex(base_hue, 40, border_light),
+            normal=self.generator._hsl_to_hex(base_hue, 50, normal_light),
+            highlight=self.generator._hsl_to_hex(base_hue, 60, highlight_light),
+        )
 
 
 __all__ = ["ColorScheme", "ColorPaletteGenerator", "ColorService"]
