@@ -13,12 +13,15 @@ if (params.has("debug")) {
   window.localStorage.setItem("tree-signal.showDebug", params.get("debug"));
 }
 
-// Auto-detect API base URL - if client is on port 8014, assume API is on 8013 on same host
-const DEFAULT_API_BASE = window.location.port === "8014" 
+// Auto-detect API base URL
+// - Port 8001 (dev client) → API on 8000
+// - Port 8014 (old Docker) → API on 8013
+// - Otherwise (unified server) → same origin as dashboard
+const DEFAULT_API_BASE = window.location.port === "8014"
   ? `${window.location.protocol}//${window.location.hostname}:8013`
-  : window.location.port === "8001" 
+  : window.location.port === "8001"
   ? `${window.location.protocol}//${window.location.hostname}:8000`
-  : "http://localhost:8013";
+  : `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
   
 const API_BASE = window.localStorage.getItem("tree-signal.api") || DEFAULT_API_BASE;
 const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
