@@ -9,6 +9,9 @@ if (params.has("apiKey")) {
 if (params.has("refresh")) {
   window.localStorage.setItem("tree-signal.refreshMs", params.get("refresh"));
 }
+if (params.has("debug")) {
+  window.localStorage.setItem("tree-signal.showDebug", params.get("debug"));
+}
 
 // Auto-detect API base URL - if client is on port 8014, assume API is on 8013 on same host
 const DEFAULT_API_BASE = window.location.port === "8014" 
@@ -20,6 +23,7 @@ const DEFAULT_API_BASE = window.location.port === "8014"
 const API_BASE = window.localStorage.getItem("tree-signal.api") || DEFAULT_API_BASE;
 const API_KEY = window.localStorage.getItem("tree-signal.apiKey") || null;
 const REFRESH_INTERVAL_MS = Number(window.localStorage.getItem("tree-signal.refreshMs") || "5000");
+const SHOW_DEBUG = window.localStorage.getItem("tree-signal.showDebug") === "true";
 
 const layoutStage = document.querySelector("#layout-stage");
 const lastRefresh = document.querySelector("#last-refresh");
@@ -188,10 +192,6 @@ function renderLayout(frames, historyMap) {
     stateSpan.textContent = frame.state;
     header.append(pathSpan, stateSpan);
 
-    const metrics = document.createElement("div");
-    metrics.className = "metrics";
-    metrics.textContent = `w=${frame.weight.toFixed(2)} // ${frame.rect.width.toFixed(2)}×${frame.rect.height.toFixed(2)}`;
-
     const divider = document.createElement("div");
     divider.className = "divider";
 
@@ -212,7 +212,14 @@ function renderLayout(frames, historyMap) {
       messagesContainer.appendChild(snippet);
     }
 
-    content.append(header, metrics, divider, messagesContainer);
+    if (SHOW_DEBUG) {
+      const metrics = document.createElement("div");
+      metrics.className = "metrics";
+      metrics.textContent = `w=${frame.weight.toFixed(2)} // ${frame.rect.width.toFixed(2)}×${frame.rect.height.toFixed(2)}`;
+      content.append(header, metrics, divider, messagesContainer);
+    } else {
+      content.append(header, divider, messagesContainer);
+    }
 
     const childrenHost = document.createElement("div");
     childrenHost.className = "layout-children";

@@ -11,16 +11,6 @@ dependencies = [
     "aiosqlite>=0.20,<0.21",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "httpx>=0.26,<0.27",
-    "pytest>=8.0,<9.0",
-    "pytest-asyncio>=0.23,<0.24",
-    "mypy>=1.8,<1.9",
-    "black>=24.2,<25.0",
-    "isort>=5.13,<5.14",
-]
-
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -43,6 +33,15 @@ strict = true
 packages = ["tree_signal"]
 plugins = []
 
+[dependency-groups]
+dev = [
+    "httpx>=0.26,<0.27",
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.23,<0.24",
+    "mypy>=1.8,<1.9",
+    "black>=24.2,<25.0",
+    "isort>=5.13,<5.14",
+]
+
 [tool.uv]
 cache-dir = ".uv-cache"
-dev-dependencies = ["tree-signal[dev]"]

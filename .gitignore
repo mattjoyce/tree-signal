@@ -1,6 +1,39 @@
+# Python
 .venv/
+.venv-*/
 .uv-cache/
 .pytest_cache/
 __pycache__/
 *.pyc
 *.egg-info/
+*.db
+*.sqlite
+
+# Node.js (MCP servers, tools)
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MCP Configuration (user-specific)
+.mcp.json
+
+# Claude Code (user-specific)
+.claude/settings.local.json
+
+# Environment variables
+.env
+
+# Data
+data/
+*.log

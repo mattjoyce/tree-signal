@@ -59,6 +59,7 @@
 
 ## Panel Presentation & Customisation
 - Panels render with auto-generated defaults so first-run setups require no manual tuning.
+- Client DOM nests child panels inside their ancestors, with geometry normalised relative to parent rectangles so treemap descendants remain visually contained.
 - Each node in the hierarchy may override aspects such as word wrapping behaviour, fonts, colour palettes, and minimum/maximum footprint; unspecified fields inherit from the nearest ancestor.
 - Split directions (horizontal/vertical sequencing inside the treemap) can be set at any node and inherited by descendants, with server defaults applied when undefined.
 - Style profiles (bundled typography/colour/layout settings) are a stretch goal; MVP ships with sensible defaults and selective per-node overrides only.
