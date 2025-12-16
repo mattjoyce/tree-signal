@@ -71,8 +71,8 @@ class LinearLayoutGenerator:
         history = tree.get_history(node.path) if include_self else []
         has_messages = len(history) > 0
 
-        # Parent gets 50% height if it has messages, 20% if empty (greedy children)
-        parent_fraction = 0.5 if has_messages else 0.2
+        # Parent gets 50% height if it has messages, 0% if empty (invisible, children get all space)
+        parent_fraction = 0.5 if has_messages else 0.0
         children_fraction = 1.0 - parent_fraction
 
         self_rect: LayoutRect | None = None
