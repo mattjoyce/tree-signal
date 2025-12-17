@@ -1,9 +1,36 @@
 # Tree Signal CLI
 
-A lightweight command-line tool for routing log streams to a Tree Signal dashboard. Pipe any log source (files, journald, docker, etc.) into `tree-signal` and watch your logs visualized in real-time on the treemap dashboard.
+Command-line tools for streaming logs to a Tree Signal dashboard. Two versions available:
 
-## Features
+- **`tree-signal`** (Python) - Advanced routing, batching, JSON extraction
+- **`tree-signal.sh`** (Bash) - Minimal dependencies, simple message sending
 
+## Choose Your CLI
+
+### Bash Version (`tree-signal.sh`) - Recommended for Simple Use Cases
+
+**Use when:**
+- ✅ You want minimal dependencies (just bash + curl)
+- ✅ Simple log forwarding without complex routing
+- ✅ Quick ad-hoc message sending
+- ✅ Systems without Python 3.11+
+
+**Features:**
+- 📨 Stdin-only processing (tail -f | tree-signal.sh)
+- 🎯 Simple channel targeting
+- ⚡ Immediate message sending
+- 🔧 Config via environment variables or simple config file
+- 📦 ~150 lines of bash, no dependencies
+
+### Python Version (`tree-signal`) - Advanced Log Processing
+
+**Use when:**
+- ✅ You need regex routing rules
+- ✅ JSON log extraction
+- ✅ Batching and rate limiting
+- ✅ Complex log transformation
+
+**Features:**
 - 📊 **Hierarchical Routing** - Route logs to channels like `app.api.auth` or `system.errors`
 - 🎯 **Pattern Matching** - Use regex to extract channel/severity from log lines
 - 🔄 **JSON Extraction** - Parse structured JSON logs automatically
@@ -14,7 +41,36 @@ A lightweight command-line tool for routing log streams to a Tree Signal dashboa
 
 ## Quick Start
 
-### Basic Usage
+### Bash CLI - Simple Message Sending
+
+```bash
+# Simple - use default host from config/env
+echo "Deploy started" | ./tree-signal.sh app.deploy
+tail -f /var/log/app.log | ./tree-signal.sh app.logs
+
+# Specify host:port explicitly
+echo "Error occurred" | ./tree-signal.sh localhost:8013 app.errors
+tail -f /var/log/nginx/access.log | ./tree-signal.sh 192.168.1.10:8013 nginx.access
+
+# With grep filtering and severity
+tail -f app.log | grep ERROR | ./tree-signal.sh -s error app.errors
+
+# Dry run (print curl commands without sending)
+echo "Test" | ./tree-signal.sh --dry-run test.channel
+```
+
+**Configuration (Bash):**
+```bash
+# Environment variables
+export TREE_SIGNAL_URL=http://localhost:8013
+export TREE_SIGNAL_API_KEY=your-key
+
+# Or config file: ~/.config/tree-signal/config
+TREE_SIGNAL_URL=http://localhost:8013
+TREE_SIGNAL_API_KEY=your-key
+```
+
+### Python CLI - Advanced Routing
 
 ```bash
 # Forward all logs to a single channel
@@ -29,10 +85,9 @@ tail -f /var/log/nginx/access.log | ./tree-signal \
 echo "Test message" | ./tree-signal --channel test --dry-run
 ```
 
-### Using a Config File
-
+**Configuration (Python):**
 ```bash
-# Create config
+# Create TOML config
 mkdir -p ~/.config/tree-signal
 cp examples/simple.toml ~/.config/tree-signal/config.toml
 
@@ -45,21 +100,41 @@ tail -f /var/log/syslog | ./tree-signal
 
 ## Installation
 
-### Standalone Script
+### Bash CLI (`tree-signal.sh`)
+
+```bash
+# Make executable
+chmod +x tree-signal.sh
+
+# Symlink to your PATH
+ln -s $(pwd)/tree-signal.sh ~/.local/bin/tree-signal-sh
+
+# Or copy to system location
+sudo cp tree-signal.sh /usr/local/bin/
+
+# Test it
+echo "Hello" | ./tree-signal.sh --dry-run test.channel
+```
+
+**Requirements:**
+- Bash 4.0+ (standard on most systems)
+- `curl` (pre-installed on most systems)
+- No other dependencies
+
+### Python CLI (`tree-signal`)
 
 ```bash
 # Make executable
 chmod +x tree-signal
 
-# Symlink to your PATH (optional)
+# Symlink to your PATH
 ln -s $(pwd)/tree-signal ~/.local/bin/tree-signal
 
 # Or copy to system location
 sudo cp tree-signal /usr/local/bin/
 ```
 
-### Requirements
-
+**Requirements:**
 - Python 3.11+ (for stdlib `tomllib`)
 - No external dependencies for TOML/JSON support
 - Optional: `pyyaml` for YAML config support
@@ -146,6 +221,29 @@ channel = "{channel}"
 ```
 
 ## CLI Options
+
+### Bash CLI Options (`tree-signal.sh`)
+
+**Usage:** `tree-signal.sh [OPTIONS] [HOST:PORT] CHANNEL`
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--severity LEVEL` | `-s` | Severity: debug\|info\|warn\|error (default: info) |
+| `--quiet` | `-q` | Suppress informational output |
+| `--debug` | `-d` | Enable debug output |
+| `--dry-run` | | Print curl commands without sending |
+| `--help` | `-h` | Show help |
+
+**Arguments:**
+- `CHANNEL` - Required hierarchical channel (e.g., `app.api.auth`)
+- `HOST:PORT` - Optional API endpoint (default: from config/env)
+
+**Environment Variables:**
+- `TREE_SIGNAL_URL` - API base URL (default: http://localhost:8013)
+- `TREE_SIGNAL_API_KEY` - API authentication key
+- `TREE_SIGNAL_CONFIG` - Config file path
+
+### Python CLI Options (`tree-signal`)
 
 | Option | Short | Description |
 |--------|-------|-------------|
