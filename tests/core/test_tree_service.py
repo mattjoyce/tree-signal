@@ -272,6 +272,26 @@ def test_touch_resets_decay_snapshot() -> None:
     assert node.weight == pytest.approx(1.5)
 
 
+def test_tick_advances_decay_and_prunes_expired() -> None:
+    """``tick`` is the explicit time-evolution step. The layout generator no
+    longer secretly mutates the tree on read — callers drive simulated time."""
+    service = ChannelTreeService()
+    service.configure_decay(hold=timedelta(seconds=1), decay=timedelta(seconds=1))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha",), at=now))
+
+    # Mid-decay tick: weight reduces, node remains.
+    service.tick(now + timedelta(seconds=1, milliseconds=500))
+    node = service.get_node(("alpha",))
+    assert node is not None
+    assert node.weight < 1.0
+
+    # Tick past decay window AND past empty_node_lifespan: history clears and
+    # the empty leaf eventually prunes.
+    service.tick(now + timedelta(seconds=60))
+    assert service.get_node(("alpha",)) is None
+
+
 def test_history_stores_recent_messages() -> None:
     service = ChannelTreeService()
     now = datetime.now(tz=timezone.utc)

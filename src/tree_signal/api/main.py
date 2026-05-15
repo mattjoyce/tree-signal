@@ -182,9 +182,11 @@ async def prune_channel(request: PruneRequest) -> Response:
 async def get_layout() -> List[LayoutFrameResponse]:
     """Return the current layout frames for active panels."""
 
+    now = datetime.now(tz=timezone.utc)
     tree_service = get_tree_service()
+    tree_service.tick(now)  # advance simulated time, then read
     generator = get_layout_generator()
-    frames = generator.generate(tree_service, timestamp=datetime.now(tz=timezone.utc))
+    frames = generator.generate(tree_service, timestamp=now)
     return [LayoutFrameResponse.from_domain(frame) for frame in frames]
 
 

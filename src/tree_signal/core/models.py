@@ -100,6 +100,21 @@ class ChannelNodeState:
         self.fade_start = self.last_message_at + hold
         self.fade_deadline = self.fade_start + decay
 
+    def state_at(self, now: datetime) -> "PanelState":
+        """Return the panel's lifecycle state at ``now``.
+
+        Lives on the node so the generator doesn't have to know the rules
+        for what "fading" means — the node owns its own state semantics.
+        """
+
+        if self.fade_start is None or self.fade_deadline is None:
+            return PanelState.ACTIVE
+        if now < self.fade_start:
+            return PanelState.ACTIVE
+        if now < self.fade_deadline:
+            return PanelState.FADING
+        return PanelState.REMOVED
+
     def apply_decay(self, now: datetime) -> None:
         """Reduce weight linearly across the [fade_start, fade_deadline] window."""
 
@@ -114,9 +129,9 @@ class ChannelNodeState:
         if self.decay_start_weight is None:
             self.decay_start_weight = self.weight
         span = (self.fade_deadline - self.fade_start).total_seconds()
-        if span <= 0:
-            self.weight = 0.0
-            return
+        # fade_deadline = fade_start + (positive) decay, so span > 0 by construction.
+        # If that ever stops being true, fail loud rather than silently zero out.
+        assert span > 0, "fade window invariant broken: fade_start must precede fade_deadline"
         remaining = (self.fade_deadline - now).total_seconds()
         fraction = max(0.0, min(1.0, remaining / span))
         self.weight = self.decay_start_weight * fraction

@@ -70,40 +70,54 @@ class ChannelTreeService:
             node.schedule_fade(self._hold, self._decay)
             node.apply_decay(now)
 
+    def tick(self, now: datetime) -> None:
+        """Advance simulated time: apply decay, then prune what has fully aged out.
+
+        Pulling this out of ``LinearLayoutGenerator.generate`` lets the layout
+        be read as a function of the tree at a known moment, instead of
+        secretly advancing the simulation as a side effect of rendering.
+        """
+
+        self.schedule_decay(now)
+        self.cleanup_expired(now)
+
+    EMPTY_NODE_LIFESPAN = timedelta(seconds=10)
+
     def cleanup_expired(self, now: datetime) -> None:
-        """Remove expired messages and prune leaf nodes with no active messages."""
-        # Clean up expired messages from history (but keep the history entry)
-        for path, history in list(self._history.items()):
-            # Remove only expired messages
+        """Drop aged-out messages, then prune leaves that have nothing left to show."""
+
+        self._expire_messages(now)
+        self._prune_empty_leaves(now)
+
+    def _expire_messages(self, now: datetime) -> None:
+        """Remove messages whose ``expires_at`` is in the past from history queues."""
+
+        for history in self._history.values():
             while history and history[0].expires_at <= now:
                 history.popleft()
 
-        # Only prune LEAF nodes (no children) with no messages AND created >10s ago
-        from datetime import timedelta
-        empty_node_lifespan = timedelta(seconds=10)
-        paths_to_prune = []
+    def _prune_empty_leaves(self, now: datetime) -> None:
+        """Prune leaf nodes that have no messages and have aged past EMPTY_NODE_LIFESPAN."""
 
+        paths_to_prune: List[ChannelPath] = []
         for node in list(self.iter_nodes()):
-            if not node.path:  # Skip root
-                continue
-
-            # CRITICAL: Never prune if node has children
+            if not node.path:
+                continue  # never prune the synthetic root
             if node.children:
+                continue  # never prune a node that still has descendants
+            if node.created_at is None:
                 continue
+            if self.get_history(node.path):
+                continue
+            if now - node.created_at < self.EMPTY_NODE_LIFESPAN:
+                continue
+            paths_to_prune.append(node.path)
 
-            # Only prune leaf nodes with no messages that are old enough
-            history = self.get_history(node.path)
-            if not history and node.created_at:
-                age = now - node.created_at
-                if age >= empty_node_lifespan:
-                    paths_to_prune.append(node.path)
-
-        # Prune paths (bottom-up)
+        # Bottom-up so a parent never disappears before its children.
+        # ``prune`` cannot raise here because the loop above already excludes
+        # the root path — if that invariant ever breaks, let it surface.
         for path in sorted(paths_to_prune, key=lambda p: len(p), reverse=True):
-            try:
-                self.prune(path)
-            except ValueError:
-                pass  # Ignore errors
+            self.prune(path)
 
     def prune(self, path: ChannelPath) -> None:
         """Remove a subtree rooted at the given path."""

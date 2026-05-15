@@ -37,10 +37,9 @@ class LinearLayoutGenerator:
 
         timestamp = timestamp or datetime.now(tz=timezone.utc)
 
-        # Apply weight decay first so layout reflects current fade state,
-        # then prune anything that has fully aged out.
-        tree.schedule_decay(timestamp)
-        tree.cleanup_expired(timestamp)
+        # Pure read. Callers must invoke ``tree.tick(now)`` to advance simulated
+        # time before generating — keeping render free of state evolution lets
+        # the layout be reasoned about as a function of tree-at-time-T.
 
         frames: List[LayoutFrame] = []
 
@@ -224,16 +223,8 @@ class LinearLayoutGenerator:
                 )
 
     def _resolve_state(self, node: ChannelNodeState, timestamp: datetime) -> PanelState:
-        deadline = node.fade_deadline
-        if deadline is None:
-            return PanelState.ACTIVE
-
-        if deadline.tzinfo is None:
-            deadline = deadline.replace(tzinfo=timezone.utc)
-
-        if timestamp >= deadline:
-            return PanelState.FADING
-        return PanelState.ACTIVE
+        """Delegate to the node — state semantics live with the data, not here."""
+        return node.state_at(timestamp)
 
 
 __all__ = ["LinearLayoutGenerator"]

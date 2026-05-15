@@ -35,3 +35,22 @@ def test_panel_state_enum_values() -> None:
     assert PanelState.ACTIVE.value == "active"
     assert PanelState.FADING.value == "fading"
     assert PanelState.REMOVED.value == "removed"
+
+
+def test_state_at_returns_active_when_no_fade_scheduled() -> None:
+    node = ChannelNodeState(path=("alpha",), weight=1.0)
+    assert node.state_at(datetime.now()) == PanelState.ACTIVE
+
+
+def test_state_at_reports_active_fading_removed_across_window() -> None:
+    node = ChannelNodeState(path=("alpha",), weight=1.0)
+    now = datetime.now()
+    node.touch(timestamp=now, weight_delta=0.0)
+    node.schedule_fade(hold=timedelta(seconds=10), decay=timedelta(seconds=5))
+
+    # In hold window
+    assert node.state_at(now + timedelta(seconds=5)) == PanelState.ACTIVE
+    # In decay window
+    assert node.state_at(now + timedelta(seconds=12)) == PanelState.FADING
+    # Past fade_deadline (hold + decay = 15s)
+    assert node.state_at(now + timedelta(seconds=20)) == PanelState.REMOVED
