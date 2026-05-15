@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from tree_signal.api.main import app, get_tree_service
 from tree_signal.core import ChannelTreeService
@@ -26,7 +26,7 @@ def _message(channel: str, *, at: datetime) -> Message:
 
 @pytest.mark.asyncio
 async def test_ingest_message_accepts_valid_payload() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/messages",
             json={
@@ -49,7 +49,7 @@ async def test_ingest_message_accepts_valid_payload() -> None:
 
 @pytest.mark.asyncio
 async def test_ingest_message_rejects_empty_channel() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/messages",
             json={
@@ -64,7 +64,7 @@ async def test_ingest_message_rejects_empty_channel() -> None:
 
 @pytest.mark.asyncio
 async def test_ingest_message_rejects_invalid_severity() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/messages",
             json={
@@ -84,7 +84,7 @@ async def test_list_messages_returns_history() -> None:
     service = get_tree_service()
     service.ingest(_message("alpha.beta", at=now))
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/v1/messages/alpha.beta")
 
     assert response.status_code == 200
@@ -96,7 +96,7 @@ async def test_list_messages_returns_history() -> None:
 
 @pytest.mark.asyncio
 async def test_list_messages_requires_channel() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/v1/messages/%2E")
 
     assert response.status_code == 422

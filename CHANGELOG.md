@@ -22,6 +22,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   matched `*.md`, but `pyproject.toml` declares `readme = "README.md"`, so
   `uv pip install .` failed in the container. Added a `!README.md`
   negation.
+- **API tests broke on httpx ≥ 0.28.** All four `tests/api/*` files used
+  `AsyncClient(app=...)`, removed in httpx 0.28. Migrated to the explicit
+  `AsyncClient(transport=ASGITransport(app=app), ...)` form, which works
+  on old and new httpx alike. Full suite now 47/47.
 
 ### Added
 

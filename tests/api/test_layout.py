@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from tree_signal.api.main import app, get_tree_service
 from tree_signal.core import ChannelTreeService, Message, MessageSeverity
@@ -30,7 +30,7 @@ async def test_layout_endpoint_returns_frames() -> None:
     service.ingest(_message(("alpha",), at=now))
     service.ingest(_message(("beta",), at=now))
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/v1/layout")
 
     assert response.status_code == 200
@@ -42,7 +42,7 @@ async def test_layout_endpoint_returns_frames() -> None:
 
 @pytest.mark.asyncio
 async def test_layout_endpoint_handles_empty_tree() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/v1/layout")
 
     assert response.status_code == 200

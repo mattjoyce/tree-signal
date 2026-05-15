@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from tree_signal.api.main import app, get_tree_service
 from tree_signal.core import ChannelTreeService
@@ -26,7 +26,7 @@ def _message(channel: str) -> Message:
 
 @pytest.mark.asyncio
 async def test_update_decay_applies_configuration() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/control/decay",
             json={"hold_seconds": 20, "decay_seconds": 15},
@@ -43,7 +43,7 @@ async def test_prune_channel_removes_subtree() -> None:
     service.ingest(_message("alpha.beta"))
     service.ingest(_message("alpha.gamma"))
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/control/prune",
             json={"channel": "alpha.beta"},
@@ -56,7 +56,7 @@ async def test_prune_channel_removes_subtree() -> None:
 
 @pytest.mark.asyncio
 async def test_control_endpoints_validate_channel() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/control/prune",
             json={"channel": "."},
@@ -68,7 +68,7 @@ async def test_control_endpoints_validate_channel() -> None:
 
 @pytest.mark.asyncio
 async def test_decay_validation_requires_positive_values() -> None:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/v1/control/decay",
             json={"hold_seconds": 1, "decay_seconds": 0},
