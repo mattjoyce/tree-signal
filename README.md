@@ -120,3 +120,6 @@ MIT License - see LICENSE file for details.
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
+
+## Changelog
+See [CHANGELOG.md](CHANGELOG.md).
