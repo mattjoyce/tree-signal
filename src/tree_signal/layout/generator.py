@@ -10,7 +10,6 @@ from tree_signal.core import (
     ColorService,
     LayoutFrame,
     LayoutRect,
-    PanelState,
 )
 
 from tree_signal.layouts.config import LinearLayoutConfig
@@ -87,7 +86,7 @@ class LinearLayoutGenerator:
                     LayoutFrame(
                         path=node.path,
                         rect=rect,
-                        state=self._resolve_state(node, timestamp),
+                        state=node.state_at(timestamp),
                         weight=node.weight,
                         generated_at=timestamp,
                         colors=colors,
@@ -130,7 +129,7 @@ class LinearLayoutGenerator:
                     LayoutFrame(
                         path=node.path,
                         rect=parent_rect,
-                        state=self._resolve_state(node, timestamp),
+                        state=node.state_at(timestamp),
                         weight=node.weight,
                         generated_at=timestamp,
                         colors=colors,
@@ -221,10 +220,6 @@ class LinearLayoutGenerator:
                 self._populate_frames(
                     child, child_rect, depth=depth + 1, frames=frames, timestamp=timestamp, tree=tree
                 )
-
-    def _resolve_state(self, node: ChannelNodeState, timestamp: datetime) -> PanelState:
-        """Delegate to the node — state semantics live with the data, not here."""
-        return node.state_at(timestamp)
 
 
 __all__ = ["LinearLayoutGenerator"]
