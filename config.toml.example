@@ -9,9 +9,9 @@ port = 8013
 # Message Decay Configuration
 [decay]
 # Duration to hold full weight before decay begins (seconds)
-hold_seconds = 30.0
+hold_seconds = 60.0
 # Duration to fade from full weight to removal (seconds)
-decay_seconds = 10.0
+decay_seconds = 30.0
 
 # Message History Configuration
 [history]

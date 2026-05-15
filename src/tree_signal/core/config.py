@@ -44,8 +44,8 @@ class ClientConfig:
 class DecayConfig:
     """Decay timing configuration."""
 
-    hold_seconds: float = 30.0
-    decay_seconds: float = 10.0
+    hold_seconds: float = 60.0
+    decay_seconds: float = 30.0
 
 
 @dataclass
@@ -179,8 +179,8 @@ def dict_to_config(data: dict) -> TreeSignalConfig:
 
     return TreeSignalConfig(
         decay=DecayConfig(
-            hold_seconds=decay_data.get("hold_seconds", 30.0),
-            decay_seconds=decay_data.get("decay_seconds", 10.0),
+            hold_seconds=decay_data.get("hold_seconds", 60.0),
+            decay_seconds=decay_data.get("decay_seconds", 30.0),
         ),
         history=HistoryConfig(max_messages=history_data.get("max_messages", 100)),
         server=ServerConfig(

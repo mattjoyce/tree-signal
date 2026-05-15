@@ -1,4 +1,228 @@
-// Configuration management
+// Tab Mode State
+let tabState = {
+  channels: [],
+  activeTab: 'all',
+  pinnedTabs: [],
+  closedTabs: [],
+};
+
+function loadTabState() {
+  try {
+    const saved = localStorage.getItem('tree-signal-tabs');
+    if (saved) {
+      const data = JSON.parse(saved);
+      tabState.pinnedTabs = data.pinned || [];
+      tabState.closedTabs = data.closed || [];
+    }
+  } catch (e) {
+    console.warn('Could not load tab state:', e);
+  }
+
+  // Parse URL hash
+  const hash = window.location.hash;
+  if (hash.startsWith('#tab=')) {
+    const tab = hash.replace('#tab=', '');
+    if (tab) {
+      tabState.activeTab = tab;
+    }
+  }
+}
+
+function saveTabState() {
+  try {
+    localStorage.setItem('tree-signal-tabs', JSON.stringify({
+      pinned: tabState.pinnedTabs,
+      closed: tabState.closedTabs,
+    }));
+  } catch (e) {
+    console.warn('Could not save tab state:', e);
+  }
+}
+
+function updateUrlHash() {
+  if (tabState.activeTab === 'all') {
+    history.replaceState(null, '', window.location.pathname);
+  } else {
+    history.replaceState(null, '', `#tab=${tabState.activeTab}`);
+  }
+}
+
+async function loadChannels() {
+  try {
+    const channels = await fetchJSON('/v1/channels');
+    
+    // Filter out closed tabs
+    const openChannels = channels.filter(ch => !tabState.closedTabs.includes(ch));
+    
+    // Merge with pinned tabs (pinned always first)
+    const pinned = tabState.pinnedTabs.filter(ch => channels.includes(ch) && !tabState.closedTabs.includes(ch));
+    const dynamic = openChannels.filter(ch => !pinned.includes(ch));
+    
+    tabState.channels = [...pinned, ...dynamic];
+    
+    // Ensure active tab is valid
+    if (tabState.activeTab !== 'all' && !tabState.channels.includes(tabState.activeTab)) {
+      tabState.activeTab = 'all';
+    }
+    
+    renderTabs();
+  } catch (e) {
+    console.warn('Could not load channels:', e);
+  }
+}
+
+function renderTabs() {
+  const tabBar = document.getElementById('tab-bar');
+  if (!tabBar) return;
+
+  // Find insert point (after "All" and before spacer)
+  const allTab = tabBar.querySelector('[data-tab="all"]');
+  const spacer = tabBar.querySelector('.tab-spacer');
+  const dropdownMenu = document.getElementById('closed-tabs-menu');
+  
+  // Remove existing channel tabs
+  const existingTabs = tabBar.querySelectorAll('.tab-item[data-tab]:not([data-tab="all"])');
+  existingTabs.forEach(t => t.remove());
+  
+  // Add new tabs
+  tabState.channels.forEach(channel => {
+    const tab = document.createElement('button');
+    tab.className = 'tab-item';
+    tab.dataset.tab = channel;
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', tabState.activeTab === channel);
+    tab.textContent = channel;
+    
+    // Close button
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'tab-close';
+    closeBtn.textContent = '×';
+    closeBtn.setAttribute('aria-label', `Close ${channel} tab`);
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeTab(channel);
+    };
+    tab.appendChild(closeBtn);
+    
+    // Click handler
+    tab.onclick = () => selectTab(channel);
+    
+    // Insert before spacer
+    tabBar.insertBefore(tab, spacer);
+  });
+
+  // Update active state
+  tabBar.querySelectorAll('.tab-item').forEach(tab => {
+    const tabName = tab.dataset.tab;
+    tab.classList.toggle('active', tabName === tabState.activeTab);
+    tab.setAttribute('aria-selected', tabName === tabState.activeTab);
+  });
+
+  // Update closed tabs dropdown
+  renderClosedTabsDropdown();
+}
+
+function renderClosedTabsDropdown() {
+  const menu = document.getElementById('closed-tabs-menu');
+  if (!menu) return;
+  
+  menu.innerHTML = '';
+  
+  if (tabState.closedTabs.length === 0) {
+    menu.textContent = 'No closed tabs';
+    return;
+  }
+
+  tabState.closedTabs.forEach(channel => {
+    const item = document.createElement('button');
+    item.className = 'tab-dropdown-item';
+    item.textContent = channel;
+    item.onclick = () => reopenTab(channel);
+    menu.appendChild(item);
+  });
+}
+
+function selectTab(tabName) {
+  tabState.activeTab = tabName;
+  updateUrlHash();
+  renderTabs();
+  // Immediate refresh on tab switch instead of waiting for next poll
+  refreshDashboard();
+}
+
+function closeTab(channel) {
+  if (!tabState.closedTabs.includes(channel)) {
+    tabState.closedTabs.push(channel);
+    saveTabState();
+    
+    // If closing active tab, switch to all
+    if (tabState.activeTab === channel) {
+      tabState.activeTab = 'all';
+      updateUrlHash();
+    }
+    
+    loadChannels();
+  }
+}
+
+function reopenTab(channel) {
+  tabState.closedTabs = tabState.closedTabs.filter(ch => ch !== channel);
+  saveTabState();
+  loadChannels();
+  selectTab(channel);
+}
+
+function cycleTab(forward = true) {
+  const allTabs = ['all', ...tabState.channels];
+  const currentIndex = allTabs.indexOf(tabState.activeTab);
+  let nextIndex;
+  
+  if (forward) {
+    nextIndex = (currentIndex + 1) % allTabs.length;
+  } else {
+    nextIndex = (currentIndex - 1 + allTabs.length) % allTabs.length;
+  }
+  
+  const nextTab = allTabs[nextIndex];
+  if (nextTab === 'all') {
+    tabState.activeTab = 'all';
+  } else {
+    tabState.activeTab = nextTab;
+  }
+  
+  updateUrlHash();
+  renderTabs();
+}
+
+// Keyboard navigation - TAB to cycle tabs
+document.addEventListener('keydown', (e) => {
+  // Ignore if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    return;
+  }
+  
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    cycleTab(!e.shiftKey);  // forward on Tab, backward on Shift+Tab
+  }
+});
+
+// Listen for hash changes
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash;
+  if (hash.startsWith('#tab=')) {
+    const tab = hash.replace('#tab=', '');
+    if (tab && tab !== tabState.activeTab) {
+      tabState.activeTab = tab;
+      renderTabs();
+    }
+  } else if (!hash || hash === '#') {
+    if (tabState.activeTab !== 'all') {
+      tabState.activeTab = 'all';
+      renderTabs();
+    }
+  }
+});
 let CONFIG = null;
 
 async function loadConfig() {
@@ -347,7 +571,11 @@ async function refreshDashboard() {
   try {
     const layout = await fetchJSON("/v1/layout");
     const historyMap = await fetchHistories(layout);
-    renderLayout(layout, historyMap);
+    
+    // Filter layout by active tab
+    const filteredLayout = filterLayoutByTab(layout, tabState.activeTab);
+    
+    renderLayout(filteredLayout, historyMap);
     lastRefresh.textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
   } catch (error) {
     console.error(error);
@@ -355,17 +583,77 @@ async function refreshDashboard() {
   }
 }
 
+function filterLayoutByTab(frames, activeTab) {
+  if (activeTab === 'all') {
+    return frames;
+  }
+  
+  // When filtering to a specific tab, recalculate layout to use full canvas
+  // Get all frames for this tab (depth 1+)
+  const tabFrames = frames.filter(frame => {
+    if (frame.path.length === 0) return false;
+    return frame.path[0] === activeTab;
+  });
+  
+  if (tabFrames.length === 0) {
+    return [];
+  }
+  
+  // Find the bounding box of all frames in this tab
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const frame of tabFrames) {
+    minX = Math.min(minX, frame.rect.x);
+    minY = Math.min(minY, frame.rect.y);
+    maxX = Math.max(maxX, frame.rect.x + frame.rect.width);
+    maxY = Math.max(maxY, frame.rect.y + frame.rect.height);
+  }
+  
+  const boundsWidth = maxX - minX;
+  const boundsHeight = maxY - minY;
+  
+  // If bounds are tiny, return frames as-is (shouldn't happen)
+  if (boundsWidth < 0.001 || boundsHeight < 0.001) {
+    return tabFrames;
+  }
+  
+  // Recalculate positions to fill full canvas (0,0 to 1,1)
+  return tabFrames.map(frame => {
+    // Normalize position to full canvas
+    const relX = (frame.rect.x - minX) / boundsWidth;
+    const relY = (frame.rect.y - minY) / boundsHeight;
+    const relWidth = frame.rect.width / boundsWidth;
+    const relHeight = frame.rect.height / boundsHeight;
+    
+    return {
+      ...frame,
+      rect: {
+        x: relX,
+        y: relY,
+        width: relWidth,
+        height: relHeight
+      }
+    };
+  });
+}
+
 function scheduleRefresh() {
   if (refreshTimer) {
     clearInterval(refreshTimer);
   }
   intervalDisplay.textContent = `(auto ${Math.round(REFRESH_INTERVAL_MS / 1000)}s)`;
-  refreshTimer = setInterval(() => refreshDashboard(), REFRESH_INTERVAL_MS);
+  refreshTimer = setInterval(() => {
+    refreshDashboard();
+    loadChannels();  // Also poll for new channels
+  }, REFRESH_INTERVAL_MS);
 }
 
 refreshButton.addEventListener("click", () => {
   refreshDashboard();
+  loadChannels();
 });
 
+// Initialize tab system
+loadTabState();
+loadChannels();
 refreshDashboard();
 scheduleRefresh();

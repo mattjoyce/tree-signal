@@ -1,0 +1,15 @@
+# Minimal Layout Profile
+# Maximum content visibility, minimal hierarchy
+# Children consume all space, parents hidden
+
+name: minimal
+description: Content-focused with hidden hierarchy
+
+parent_fraction: 0.0
+min_extent: 0.02
+show_empty_parents: false
+depth_decay_factor: 0.0
+panel_gap: 0.0
+
+color_assignment_mode: increment
+color_inheritance_mode: unique

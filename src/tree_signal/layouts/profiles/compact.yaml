@@ -1,0 +1,15 @@
+# Compact Layout Profile
+# Maximizes screen real estate by minimizing parent panel space
+# and hiding empty parent panels
+
+name: compact
+description: Maximizes content area with minimal chrome
+
+parent_fraction: 0.08
+min_extent: 0.01
+show_empty_parents: false
+depth_decay_factor: 0.02
+panel_gap: 0.0
+
+color_assignment_mode: increment
+color_inheritance_mode: unique

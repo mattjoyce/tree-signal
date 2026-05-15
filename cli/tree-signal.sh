@@ -55,6 +55,9 @@ OPTIONS:
     --dry-run            Print curl commands without sending
     -h, --help           Show this help
 
+REQUIREMENTS:
+    - jq (JSON processor) - https://jqlang.github.io/jq/
+
 CONFIGURATION:
     Config file: ~/.config/tree-signal/config or /etc/tree-signal/config
 
@@ -167,9 +170,13 @@ send_message() {
     local severity="$3"
     local url="$4"
 
-    # Build JSON payload (escape quotes in payload)
-    local escaped_payload="${payload//\"/\\\"}"
-    local json_payload="{\"channel\":\"$channel\",\"payload\":\"$escaped_payload\",\"severity\":\"$severity\"}"
+    # Build JSON payload using jq for proper escaping
+    local json_payload
+    json_payload=$(jq -n \
+        --arg channel "$channel" \
+        --arg payload "$payload" \
+        --arg severity "$severity" \
+        '{channel: $channel, payload: $payload, severity: $severity}')
 
     # Build curl command
     local curl_cmd=(
@@ -224,6 +231,13 @@ send_message() {
 
 # Main processing loop
 main() {
+    # Check for required dependencies
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "ERROR: jq is required but not installed" >&2
+        echo "Install jq: https://jqlang.github.io/jq/download/" >&2
+        exit 1
+    fi
+
     # Load configuration
     load_config
 

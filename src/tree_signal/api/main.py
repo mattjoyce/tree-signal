@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from tree_signal.core import ChannelTreeService, ColorService, Message, MessageSeverity, get_config
-from tree_signal.layout import LinearLayoutGenerator
+from tree_signal.layout import LinearLayoutGenerator, LinearLayoutConfig, load_layout_profile, list_available_profiles
 
 from .schemas import (
     ClientConfigResponse,
@@ -23,6 +23,9 @@ from .schemas import (
     DecayConfig,
     DecayConfigResponse,
     LayoutFrameResponse,
+    LayoutProfileConfig,
+    LayoutProfileResponse,
+    LayoutConfigResponse,
     MessageIngress,
     MessageIngressResponse,
     MessageRecord,
@@ -32,13 +35,18 @@ from .schemas import (
 # Load configuration at startup
 config = get_config()
 
+# Determine layout profile from environment or config
+_layout_profile_name = os.getenv("TREE_SIGNAL_LAYOUT", "compact")
+_layout_config = load_layout_profile(_layout_profile_name)
+
 app = FastAPI(title="Tree Signal", version=config.client.version)
 app.state.tree_service = ChannelTreeService()
 app.state.color_service = ColorService(
-    mode=config.client.colors.assignment_mode,
-    inheritance_mode=config.client.colors.inheritance_mode
+    mode=_layout_config.color_assignment_mode,
+    inheritance_mode=_layout_config.color_inheritance_mode
 )
-app.state.layout_generator = LinearLayoutGenerator(color_service=app.state.color_service)
+app.state.layout_generator = LinearLayoutGenerator(config=_layout_config, color_service=app.state.color_service)
+app.state.layout_profile = _layout_profile_name
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,14 +58,14 @@ app.add_middleware(
 
 def get_tree_service() -> ChannelTreeService:
     """Retrieve the shared channel tree service instance."""
-
-    return app.state.tree_service  # type: ignore[return-value]
+    service: ChannelTreeService = app.state.tree_service
+    return service
 
 
 def get_layout_generator() -> LinearLayoutGenerator:
     """Retrieve the shared layout generator instance."""
-
-    return app.state.layout_generator  # type: ignore[return-value]
+    generator: LinearLayoutGenerator = app.state.layout_generator
+    return generator
 
 
 @app.get("/healthz", summary="Health check")
@@ -103,6 +111,14 @@ async def list_messages(channel: str) -> List[MessageRecord]:
     return [MessageRecord.from_domain(msg) for msg in history]
 
 
+@app.get("/v1/channels", response_model=List[str])
+async def list_channels() -> List[str]:
+    """Return top-level channel names (emitters)."""
+
+    tree_service = get_tree_service()
+    return list(tree_service.root.children.keys())
+
+
 @app.post("/v1/control/decay", response_model=DecayConfigResponse)
 async def update_decay(config: DecayConfig) -> DecayConfigResponse:
     """Update decay configuration for the channel tree."""
@@ -122,7 +138,12 @@ async def update_colors(config: ColorConfig) -> ColorConfigResponse:
 
     # Update app state
     app.state.color_service = new_color_service
-    app.state.layout_generator = LinearLayoutGenerator(color_service=new_color_service)
+    # Re-create layout generator with updated color service
+    layout_config = LinearLayoutConfig(
+        color_assignment_mode=config.assignment_mode,
+        color_inheritance_mode=config.inheritance_mode,
+    )
+    app.state.layout_generator = LinearLayoutGenerator(config=layout_config, color_service=new_color_service)
 
     return ColorConfigResponse(
         assignment_mode=config.assignment_mode, inheritance_mode=config.inheritance_mode
@@ -165,6 +186,48 @@ async def get_layout() -> List[LayoutFrameResponse]:
     generator = get_layout_generator()
     frames = generator.generate(tree_service, timestamp=datetime.now(tz=timezone.utc))
     return [LayoutFrameResponse.from_domain(frame) for frame in frames]
+
+
+@app.get("/v1/control/layout/profile", response_model=LayoutProfileResponse)
+async def get_layout_profile() -> LayoutProfileResponse:
+    """Get current and available layout profiles."""
+    return LayoutProfileResponse(
+        current_profile=app.state.layout_profile,
+        available_profiles=list_available_profiles(),
+    )
+
+
+@app.post("/v1/control/layout/profile", response_model=LayoutProfileResponse)
+async def set_layout_profile(request: LayoutProfileConfig) -> LayoutProfileResponse:
+    """Switch to a different layout profile."""
+    try:
+        new_config = load_layout_profile(request.profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    app.state.layout_generator = LinearLayoutGenerator(
+        config=new_config, color_service=app.state.color_service
+    )
+    app.state.layout_profile = request.profile
+
+    return LayoutProfileResponse(
+        current_profile=request.profile,
+        available_profiles=list_available_profiles(),
+    )
+
+
+@app.get("/v1/control/layout/config", response_model=LayoutConfigResponse)
+async def get_layout_config() -> LayoutConfigResponse:
+    """Get current layout configuration."""
+    generator = get_layout_generator()
+    cfg = generator._config
+    return LayoutConfigResponse(
+        parent_fraction=cfg.parent_fraction,
+        min_extent=cfg.min_extent,
+        show_empty_parents=cfg.show_empty_parents,
+        depth_decay_factor=cfg.depth_decay_factor,
+        panel_gap=cfg.panel_gap,
+    )
 
 
 def _parse_channel(raw: str) -> tuple[str, ...]:

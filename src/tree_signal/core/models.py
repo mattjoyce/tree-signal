@@ -76,7 +76,9 @@ class ChannelNodeState:
     path: ChannelPath
     weight: float
     last_message_at: Optional[datetime] = None
+    fade_start: Optional[datetime] = None
     fade_deadline: Optional[datetime] = None
+    decay_start_weight: Optional[float] = None
     locked: bool = False
     created_at: Optional[datetime] = None
     children: Dict[str, "ChannelNodeState"] = field(default_factory=dict)
@@ -86,13 +88,38 @@ class ChannelNodeState:
 
         self.last_message_at = timestamp
         self.weight = max(self.weight + weight_delta, 0.0)
+        # New activity restarts the decay snapshot so the next fade window
+        # measures from the freshly-touched weight, not the stale one.
+        self.decay_start_weight = None
 
     def schedule_fade(self, hold: timedelta, decay: timedelta) -> None:
-        """Set fade deadline based on hold and decay intervals."""
+        """Set fade window based on hold and decay intervals."""
 
         if self.last_message_at is None:
             return
-        self.fade_deadline = self.last_message_at + hold + decay
+        self.fade_start = self.last_message_at + hold
+        self.fade_deadline = self.fade_start + decay
+
+    def apply_decay(self, now: datetime) -> None:
+        """Reduce weight linearly across the [fade_start, fade_deadline] window."""
+
+        if self.fade_start is None or self.fade_deadline is None:
+            return
+        if now < self.fade_start:
+            return
+        if now >= self.fade_deadline:
+            self.weight = 0.0
+            self.decay_start_weight = None
+            return
+        if self.decay_start_weight is None:
+            self.decay_start_weight = self.weight
+        span = (self.fade_deadline - self.fade_start).total_seconds()
+        if span <= 0:
+            self.weight = 0.0
+            return
+        remaining = (self.fade_deadline - now).total_seconds()
+        fraction = max(0.0, min(1.0, remaining / span))
+        self.weight = self.decay_start_weight * fraction
 
 
 __all__ = [

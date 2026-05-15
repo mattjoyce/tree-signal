@@ -153,6 +153,29 @@ class ColorConfigResponse(BaseModel):
     inheritance_mode: str
 
 
+class LayoutProfileConfig(BaseModel):
+    """Request payload for changing layout profile."""
+
+    profile: str = Field(..., description="Layout profile name (compact, spacious, minimal, etc.)")
+
+
+class LayoutProfileResponse(BaseModel):
+    """Response with current and available layout profiles."""
+
+    current_profile: str
+    available_profiles: List[str]
+
+
+class LayoutConfigResponse(BaseModel):
+    """Current layout configuration."""
+
+    parent_fraction: float
+    min_extent: float
+    show_empty_parents: bool
+    depth_decay_factor: float
+    panel_gap: float
+
+
 class ClientColorsResponse(BaseModel):
     """Client color configuration response."""
 

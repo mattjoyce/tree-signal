@@ -10,7 +10,7 @@ Command-line tools for streaming logs to a Tree Signal dashboard. Two versions a
 ### Bash Version (`tree-signal.sh`) - Recommended for Simple Use Cases
 
 **Use when:**
-- ✅ You want minimal dependencies (just bash + curl)
+- ✅ You want minimal dependencies (bash + curl + jq)
 - ✅ Simple log forwarding without complex routing
 - ✅ Quick ad-hoc message sending
 - ✅ Systems without Python 3.11+
@@ -20,7 +20,7 @@ Command-line tools for streaming logs to a Tree Signal dashboard. Two versions a
 - 🎯 Simple channel targeting
 - ⚡ Immediate message sending
 - 🔧 Config via environment variables or simple config file
-- 📦 ~150 lines of bash, no dependencies
+- 📦 ~150 lines of bash, standard utilities only
 
 ### Python Version (`tree-signal`) - Advanced Log Processing
 
@@ -119,7 +119,7 @@ echo "Hello" | ./tree-signal.sh --dry-run test.channel
 **Requirements:**
 - Bash 4.0+ (standard on most systems)
 - `curl` (pre-installed on most systems)
-- No other dependencies
+- `jq` (JSON processor) - Install: https://jqlang.github.io/jq/
 
 ### Python CLI (`tree-signal`)
 

@@ -21,6 +21,19 @@
         <button id="refresh-button" type="button">Refresh</button>
       </div>
     </header>
+
+    <nav id="tab-bar" class="tab-bar" role="tablist" aria-label="Channel tabs">
+      <button role="tab" aria-selected="true" data-tab="all" class="tab-item active">All</button>
+      <!-- Dynamic tabs inserted here -->
+      <div class="tab-spacer"></div>
+      <div class="tab-dropdown">
+        <button type="button" class="tab-dropdown-toggle" aria-label="Closed tabs">
+          ▼
+        </button>
+        <div class="tab-dropdown-menu" id="closed-tabs-menu"></div>
+      </div>
+    </nav>
+
     <main class="app-main">
       <div id="layout-stage" class="layout-stage" aria-live="polite" aria-label="Channel layout"></div>
     </main>

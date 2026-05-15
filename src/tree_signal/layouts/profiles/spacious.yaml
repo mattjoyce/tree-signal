@@ -1,0 +1,15 @@
+# Spacious Layout Profile  
+# More breathing room with larger parent panels
+# Better for fewer channels with detailed hierarchies
+
+name: spacious
+description: Comfortable layout with visible hierarchy
+
+parent_fraction: 0.25
+min_extent: 0.05
+show_empty_parents: true
+depth_decay_factor: 0.0
+panel_gap: 0.005
+
+color_assignment_mode: increment
+color_inheritance_mode: unique

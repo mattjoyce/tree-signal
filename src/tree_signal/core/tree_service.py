@@ -17,6 +17,7 @@ class ChannelTreeService:
         self._root = ChannelNodeState(path=(), weight=0.0)
         self._hold = timedelta(seconds=10)
         self._decay = timedelta(seconds=5)
+        self._max_weight: Optional[float] = 10.0
         self._history: Dict[ChannelPath, Deque[Message]] = {}
 
     @property
@@ -31,10 +32,12 @@ class ChannelTreeService:
         timestamp = message.received_at
         node = self._root
         node.touch(timestamp=timestamp, weight_delta=weight_delta)
+        self._apply_weight_cap(node)
 
         for segment in message.channel_path:
             node = self._ensure_child(node=node, segment=segment, timestamp=timestamp)
             node.touch(timestamp=timestamp, weight_delta=weight_delta)
+            self._apply_weight_cap(node)
             node.schedule_fade(self._hold, self._decay)
 
         self._append_history(message)
@@ -45,16 +48,27 @@ class ChannelTreeService:
         self._hold = hold
         self._decay = decay
 
-    def schedule_decay(self, now: datetime) -> None:
-        """Apply decay semantics across the tree.
+    def configure_max_weight(self, max_weight: Optional[float]) -> None:
+        """Update the per-node weight cap. Pass None to disable."""
 
-        Phase 1 placeholder: propagate fade deadlines, but do not modify weights yet.
-        """
+        if max_weight is not None and max_weight <= 0:
+            raise ValueError("max_weight must be positive or None")
+        self._max_weight = max_weight
+
+    def _apply_weight_cap(self, node: ChannelNodeState) -> None:
+        """Clamp a node's weight to ``_max_weight`` so busy channels do not swamp siblings."""
+
+        if self._max_weight is not None and node.weight > self._max_weight:
+            node.weight = self._max_weight
+
+    def schedule_decay(self, now: datetime) -> None:
+        """Refresh fade windows and linearly reduce weight inside the decay window."""
 
         for node in self.iter_nodes():
             if node.last_message_at is None or node.locked:
                 continue
             node.schedule_fade(self._hold, self._decay)
+            node.apply_decay(now)
 
     def cleanup_expired(self, now: datetime) -> None:
         """Remove expired messages and prune leaf nodes with no active messages."""

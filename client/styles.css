@@ -1,14 +1,20 @@
 :root {
   color-scheme: dark;
-  --tokyo-bg: #1a1b26;
-  --tokyo-surface: #1f2335;
-  --tokyo-panel: #24283b;
-  --tokyo-text: #c0caf5;
-  --tokyo-muted: #565f89;
-  --tokyo-accent: #7aa2f7;
-  --tokyo-accent-soft: #bb9af7;
-  --tokyo-success: #9ece6a;
-  --tokyo-warn: #e0af68;
+  /* Night Owl theme colors */
+  --night-bg: #011627;
+  --night-bg-light: #0b2942;
+  --night-surface: #0d2a4a;
+  --night-panel: #112948;
+  --night-text: #d6deeb;
+  --night-muted: #637777;
+  --night-accent: #82aaff;
+  --night-accent-soft: #c792ea;
+  --night-success: #7ee787;
+  --night-warn: #ff9e64;
+  --night-error: #ff5370;
+  --night-cyan: #add7ff;
+  --night-yellow: #ffeb8b;
+  --night-pink: #f087bd;
   font-family: "Fira Code", monospace;
 }
 
@@ -20,8 +26,8 @@ body {
   margin: 0;
   height: 100vh;
   min-height: 100vh;
-  background: var(--tokyo-bg);
-  color: var(--tokyo-text);
+  background: var(--night-bg);
+  color: var(--night-text);
   font-family: "Fira Code", monospace;
   display: flex;
   flex-direction: column;
@@ -32,7 +38,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  background: var(--tokyo-surface);
+  background: var(--night-surface);
   border-bottom: 1px solid rgba(122, 162, 247, 0.25);
 }
 
@@ -47,13 +53,13 @@ body {
   display: flex;
   gap: 0.75rem;
   align-items: center;
-  color: var(--tokyo-muted);
+  color: var(--night-muted);
 }
 
 #refresh-button {
-  background: var(--tokyo-accent);
+  background: var(--night-accent);
   border: none;
-  color: var(--tokyo-bg);
+  color: var(--night-bg);
   font-family: inherit;
   font-weight: 600;
   padding: 0.35rem 0.75rem;
@@ -63,7 +69,7 @@ body {
 }
 
 #refresh-button:hover {
-  background: var(--tokyo-accent-soft);
+  background: var(--night-accent-soft);
 }
 
 .app-main {
@@ -93,7 +99,7 @@ body {
   background: var(--channel-bg, rgba(15, 17, 25, 0.86));
   backdrop-filter: blur(6px);
   transition: border-color 0.2s ease, background 0.2s ease;
-  color: var(--channel-normal, var(--tokyo-text));
+  color: var(--channel-normal, var(--night-text));
 }
 
 .layout-content {
@@ -114,7 +120,7 @@ body {
 }
 
 .layout-cell:hover {
-  border-color: var(--tokyo-accent);
+  border-color: var(--night-accent);
   background: rgba(20, 22, 31, 0.92);
 }
 
@@ -128,7 +134,7 @@ body {
 }
 
 .layout-cell .path {
-  color: var(--channel-highlight, var(--tokyo-accent));
+  color: var(--channel-highlight, var(--night-accent));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -136,13 +142,13 @@ body {
 
 .layout-cell .state {
   font-size: 0.65rem;
-  color: var(--tokyo-muted);
+  color: var(--night-muted);
   text-transform: uppercase;
 }
 
 .layout-cell .metrics {
   font-size: 0.65rem;
-  color: var(--tokyo-muted);
+  color: var(--night-muted);
   padding: 0 0.65rem 0.4rem;
 }
 
@@ -165,7 +171,7 @@ body {
   border-radius: 0.45rem;
   padding: 0.35rem 0.45rem;
   font-size: 0.75rem;
-  color: var(--tokyo-text);
+  color: var(--night-text);
   line-height: 1.3;
   max-height: 7rem;
   overflow: auto;
@@ -176,13 +182,13 @@ body {
 
 .layout-cell .snippet time {
   display: block;
-  color: var(--tokyo-muted);
+  color: var(--night-muted);
   font-size: 0.62rem;
   margin-bottom: 0.2rem;
 }
 
 .layout-cell .snippet[data-severity="warn"] {
-  border-left-color: var(--tokyo-warn);
+  border-left-color: var(--night-warn);
 }
 
 .layout-cell .snippet[data-severity="error"] {
@@ -190,7 +196,7 @@ body {
 }
 
 .layout-cell .snippet[data-severity="debug"] {
-  border-left-color: var(--tokyo-success);
+  border-left-color: var(--night-success);
 }
 
 .message-empty {
@@ -199,8 +205,149 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--tokyo-text);
+  color: var(--night-text);
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: 0.02em;
+}
+
+/* Tab Bar */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  background: var(--night-bg-light);
+  border-bottom: 1px solid rgba(122, 162, 247, 0.2);
+  padding: 0 0.5rem;
+  gap: 0.25rem;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tab-bar::-webkit-scrollbar-track {
+  background: var(--night-bg);
+}
+
+.tab-bar::-webkit-scrollbar-thumb {
+  background: var(--night-muted);
+  border-radius: 2px;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  color: var(--night-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  border-radius: 0.4rem 0.4rem 0 0;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tab-item:hover {
+  background: rgba(122, 162, 247, 0.1);
+  color: var(--night-text);
+}
+
+.tab-item.active {
+  background: var(--night-panel);
+  color: var(--night-accent);
+  font-weight: 600;
+  border-bottom: 2px solid var(--night-accent);
+}
+
+.tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.9rem;
+  color: var(--night-muted);
+  border-radius: 50%;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.tab-item:hover .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: var(--night-error);
+  color: var(--night-bg);
+}
+
+.tab-spacer {
+  flex: 1;
+  min-width: 1rem;
+}
+
+/* Tab Dropdown */
+.tab-dropdown {
+  position: relative;
+}
+
+.tab-dropdown-toggle {
+  background: transparent;
+  border: 1px solid rgba(122, 162, 247, 0.3);
+  color: var(--night-muted);
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-dropdown-toggle:hover {
+  background: rgba(122, 162, 247, 0.1);
+  color: var(--night-text);
+}
+
+.tab-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.25rem;
+  background: var(--night-surface);
+  border: 1px solid rgba(122, 162, 247, 0.25);
+  border-radius: 0.45rem;
+  padding: 0.35rem;
+  min-width: 8rem;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.tab-dropdown:hover .tab-dropdown-menu,
+.tab-dropdown:focus-within .tab-dropdown-menu {
+  display: block;
+}
+
+.tab-dropdown-item {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--night-text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.3rem;
+  transition: background 0.15s ease;
+}
+
+.tab-dropdown-item:hover {
+  background: rgba(122, 162, 247, 0.15);
 }

@@ -156,6 +156,122 @@ def test_configure_decay_overrides_hold_and_decay() -> None:
     assert node.fade_deadline == expected_deadline
 
 
+def test_schedule_decay_preserves_weight_during_hold() -> None:
+    service = ChannelTreeService()
+    service.configure_decay(hold=timedelta(seconds=10), decay=timedelta(seconds=4))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha",), at=now))
+
+    # Mid-hold: half-way through the hold window, well before fade_start.
+    service.schedule_decay(now + timedelta(seconds=5))
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    assert node.weight == 1.0
+    assert node.decay_start_weight is None
+
+
+def test_schedule_decay_reduces_weight_linearly_during_decay() -> None:
+    service = ChannelTreeService()
+    service.configure_decay(hold=timedelta(seconds=2), decay=timedelta(seconds=4))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha",), at=now))
+    node = service.get_node(("alpha",))
+    assert node is not None
+
+    # At fade_start exactly: still full weight, snapshot captured.
+    service.schedule_decay(now + timedelta(seconds=2))
+    assert node.weight == pytest.approx(1.0)
+    assert node.decay_start_weight == pytest.approx(1.0)
+
+    # 1s into the 4s decay window: 75% remaining.
+    service.schedule_decay(now + timedelta(seconds=3))
+    assert node.weight == pytest.approx(0.75)
+
+    # 3s into the 4s decay window: 25% remaining.
+    service.schedule_decay(now + timedelta(seconds=5))
+    assert node.weight == pytest.approx(0.25)
+
+
+def test_schedule_decay_zeros_weight_after_decay_window() -> None:
+    service = ChannelTreeService()
+    service.configure_decay(hold=timedelta(seconds=2), decay=timedelta(seconds=4))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha",), at=now))
+
+    # Past fade_deadline (hold + decay = 6s).
+    service.schedule_decay(now + timedelta(seconds=10))
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    assert node.weight == 0.0
+    assert node.decay_start_weight is None
+
+
+def test_weight_is_capped_at_default_max() -> None:
+    service = ChannelTreeService()
+    now = datetime.now(tz=timezone.utc)
+    for i in range(50):
+        service.ingest(_message(("alpha",), at=now + timedelta(milliseconds=i)))
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    assert node.weight == 10.0  # default cap
+    assert service.root.weight == 10.0  # root capped too
+
+
+def test_configure_max_weight_relaxes_cap() -> None:
+    service = ChannelTreeService()
+    service.configure_max_weight(50.0)
+    now = datetime.now(tz=timezone.utc)
+    for i in range(30):
+        service.ingest(_message(("alpha",), at=now + timedelta(milliseconds=i)))
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    assert node.weight == 30.0  # still below new cap
+
+
+def test_configure_max_weight_none_disables_cap() -> None:
+    service = ChannelTreeService()
+    service.configure_max_weight(None)
+    now = datetime.now(tz=timezone.utc)
+    for i in range(100):
+        service.ingest(_message(("alpha",), at=now + timedelta(milliseconds=i)))
+
+    node = service.get_node(("alpha",))
+    assert node is not None
+    assert node.weight == 100.0  # unbounded
+
+
+def test_configure_max_weight_rejects_zero_or_negative() -> None:
+    service = ChannelTreeService()
+    with pytest.raises(ValueError):
+        service.configure_max_weight(0.0)
+    with pytest.raises(ValueError):
+        service.configure_max_weight(-1.0)
+
+
+def test_touch_resets_decay_snapshot() -> None:
+    service = ChannelTreeService()
+    service.configure_decay(hold=timedelta(seconds=2), decay=timedelta(seconds=4))
+    now = datetime.now(tz=timezone.utc)
+    service.ingest(_message(("alpha",), at=now))
+    node = service.get_node(("alpha",))
+    assert node is not None
+
+    # Decay halfway, snapshot is captured at 1.0.
+    service.schedule_decay(now + timedelta(seconds=4))
+    assert node.weight == pytest.approx(0.5)
+    assert node.decay_start_weight == pytest.approx(1.0)
+
+    # New activity arrives — snapshot must clear so the next fade window
+    # measures from the freshly-touched weight, not the stale 1.0.
+    service.ingest(_message(("alpha",), at=now + timedelta(seconds=4)))
+    assert node.decay_start_weight is None
+    assert node.weight == pytest.approx(1.5)
+
+
 def test_history_stores_recent_messages() -> None:
     service = ChannelTreeService()
     now = datetime.now(tz=timezone.utc)

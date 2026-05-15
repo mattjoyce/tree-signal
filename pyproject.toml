@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]>=0.27,<0.28",
     "pydantic>=2.6,<2.7",
     "aiosqlite>=0.20,<0.21",
+    "pyyaml>=6.0,<7.0",
 ]
 
 [build-system]
