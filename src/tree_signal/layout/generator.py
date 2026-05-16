@@ -18,12 +18,6 @@ from tree_signal.layouts.config import LinearLayoutConfig
 class LinearLayoutGenerator:
     """Generate nested rectangles using alternating split orientation (slice-and-dice)."""
 
-    # Vertical share given to an *empty* parent that exists only to group
-    # >= 2 children (LAYOUT_UX_PROBLEMS.md "Scenario B"). Just enough for the
-    # container's border + header so the hierarchy is legible; the children
-    # still get the rest. Depth-decayed like the message-parent fraction.
-    EMPTY_GROUP_FRACTION = 0.05
-
     def __init__(
         self,
         config: Optional[LinearLayoutConfig] = None,
@@ -56,26 +50,20 @@ class LinearLayoutGenerator:
         self._populate_frames(root, root_rect, depth=0, frames=frames, timestamp=timestamp, tree=tree)
         return frames
 
-    def _get_parent_fraction(self, depth: int, has_messages: bool, child_count: int) -> float:
-        """Vertical share for a parent's own header/message strip.
+    def _get_parent_fraction(self, depth: int, has_messages: bool) -> float:
+        """Vertical share for a parent's own message strip.
 
-        - has its own messages → full ``parent_fraction`` (it shows content)
-        - empty but groups >= 2 children → thin ``EMPTY_GROUP_FRACTION`` strip
-          so the container border/label renders and children visibly nest
-          inside it (LAYOUT_UX_PROBLEMS.md "Scenario B")
-        - empty single-child / empty leaf → 0 (no value boxing one thing)
+        Only parents with their *own* messages take a strip. Empty parents
+        are handled separately: a multi-child empty parent is emitted as a
+        zero-strip grouping container (the client draws its border/label at
+        the children's bounding box); a single-child empty parent collapses.
         """
-        if has_messages:
-            fraction = self._parent_fraction
-        elif self._show_empty_parents and child_count >= 2:
-            fraction = self.EMPTY_GROUP_FRACTION
-        else:
+        if not has_messages:
             return 0.0
 
-        # Apply depth decay if configured
+        fraction = self._parent_fraction
         if self._depth_decay_factor > 0:
             fraction = max(0.0, fraction - (depth * self._depth_decay_factor))
-
         return fraction
 
     def _populate_frames(
@@ -113,14 +101,27 @@ class LinearLayoutGenerator:
         history = tree.get_history(node.path) if include_self else []
         has_messages = len(history) > 0
 
-        parent_fraction = self._get_parent_fraction(depth, has_messages, len(children))
-        children_fraction = 1.0 - parent_fraction
+        parent_fraction = self._get_parent_fraction(depth, has_messages)
 
-        # Skip invisible parent panels
-        should_render_parent = include_self and (has_messages or self._show_empty_parents)
+        # An interior node falls into one of three cases:
+        #  A. has its own messages → strip model: parent shows content above,
+        #     children take the remainder.
+        #  B. empty but groups >= 2 children → grouping container: emit the
+        #     parent frame; children take the full rect. The client draws the
+        #     parent border/label at the children's bounding box and nests
+        #     them via the DOM, so no strip is carved (a thin strip races
+        #     min_extent and disappears for realistic low-weight data).
+        #  C. empty single-child / leaf → collapse: no parent frame, children
+        #     take the full rect. No value boxing one thing.
+        is_grouping = (
+            include_self
+            and not has_messages
+            and self._show_empty_parents
+            and len(children) >= 2
+        )
 
-        if should_render_parent and parent_fraction > 0:
-            # Apply panel gap
+        if include_self and has_messages and parent_fraction > 0:
+            children_fraction = 1.0 - parent_fraction
             gap = self._panel_gap / 2
             parent_rect = LayoutRect(
                 x=rect.x + gap,
@@ -149,6 +150,18 @@ class LinearLayoutGenerator:
                     )
                 )
         else:
+            if is_grouping:
+                colors = self._color_service.get_scheme_for_channel(node.path)
+                frames.append(
+                    LayoutFrame(
+                        path=node.path,
+                        rect=rect,
+                        state=node.state_at(timestamp),
+                        weight=node.weight,
+                        generated_at=timestamp,
+                        colors=colors,
+                    )
+                )
             children_rect = rect
 
         child_list = list(children)
