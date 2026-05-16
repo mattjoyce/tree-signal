@@ -18,6 +18,12 @@ from tree_signal.layouts.config import LinearLayoutConfig
 class LinearLayoutGenerator:
     """Generate nested rectangles using alternating split orientation (slice-and-dice)."""
 
+    # Vertical share given to an *empty* parent that exists only to group
+    # >= 2 children (LAYOUT_UX_PROBLEMS.md "Scenario B"). Just enough for the
+    # container's border + header so the hierarchy is legible; the children
+    # still get the rest. Depth-decayed like the message-parent fraction.
+    EMPTY_GROUP_FRACTION = 0.05
+
     def __init__(
         self,
         config: Optional[LinearLayoutConfig] = None,
@@ -50,14 +56,21 @@ class LinearLayoutGenerator:
         self._populate_frames(root, root_rect, depth=0, frames=frames, timestamp=timestamp, tree=tree)
         return frames
 
-    def _get_parent_fraction(self, depth: int, has_messages: bool) -> float:
-        """Calculate parent fraction based on config and depth."""
-        if not has_messages and not self._show_empty_parents:
-            return 0.0
-        if not has_messages:
-            return 0.0  # Empty parents always invisible
+    def _get_parent_fraction(self, depth: int, has_messages: bool, child_count: int) -> float:
+        """Vertical share for a parent's own header/message strip.
 
-        fraction = self._parent_fraction
+        - has its own messages → full ``parent_fraction`` (it shows content)
+        - empty but groups >= 2 children → thin ``EMPTY_GROUP_FRACTION`` strip
+          so the container border/label renders and children visibly nest
+          inside it (LAYOUT_UX_PROBLEMS.md "Scenario B")
+        - empty single-child / empty leaf → 0 (no value boxing one thing)
+        """
+        if has_messages:
+            fraction = self._parent_fraction
+        elif self._show_empty_parents and child_count >= 2:
+            fraction = self.EMPTY_GROUP_FRACTION
+        else:
+            return 0.0
 
         # Apply depth decay if configured
         if self._depth_decay_factor > 0:
@@ -100,7 +113,7 @@ class LinearLayoutGenerator:
         history = tree.get_history(node.path) if include_self else []
         has_messages = len(history) > 0
 
-        parent_fraction = self._get_parent_fraction(depth, has_messages)
+        parent_fraction = self._get_parent_fraction(depth, has_messages, len(children))
         children_fraction = 1.0 - parent_fraction
 
         # Skip invisible parent panels

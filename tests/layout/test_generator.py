@@ -68,9 +68,10 @@ def test_deep_single_channel_collapses_intermediate_parents() -> None:
     assert leaf.rect.height == 1.0
 
 
-def test_empty_multi_child_parent_does_not_emit_intermediate_frame() -> None:
-    """When an intermediate node has no messages of its own, it is collapsed even when
-    it has multiple children — the children occupy the would-be parent's slot directly."""
+def test_empty_multi_child_parent_emits_grouping_container() -> None:
+    """An empty intermediate node with >= 2 children is drawn as a grouping
+    container (LAYOUT_UX_PROBLEMS.md Scenario B) so the hierarchy is legible.
+    A single-child empty parent still collapses — no value boxing one thing."""
     service = ChannelTreeService()
     now = datetime.now(tz=timezone.utc)
     service.ingest(_message(("this", "that", "other"), at=now))
@@ -79,8 +80,8 @@ def test_empty_multi_child_parent_does_not_emit_intermediate_frame() -> None:
     frames = LinearLayoutGenerator().generate(service, timestamp=now)
     paths = {frame.path for frame in frames}
 
-    assert ("this", "that") not in paths
-    assert ("this",) not in paths
+    assert ("this", "that") in paths      # 2 children → grouping container
+    assert ("this",) not in paths         # single child → still collapsed
     assert ("this", "that", "other") in paths
     assert ("this", "that", "omg") in paths
 
