@@ -101,31 +101,38 @@ def test_parent_with_own_messages_still_emits_frame() -> None:
     assert ("this", "that", "other") in paths
 
 
-def test_nested_children_split_vertically() -> None:
-    """Children at depth 1 split vertically (stacked), alternating with horizontal at depth 0."""
+def test_children_tile_parent_without_overlap() -> None:
+    """Children partition the parent's area without overlapping and stay in
+    bounds. Split *direction* is aspect-driven (longer axis), not a fixed
+    function of depth, so this asserts tiling correctness, not orientation."""
     service = ChannelTreeService()
     now = datetime.now(tz=timezone.utc)
-    # Give alpha a direct message so it has visible area
+    # alpha gets a direct message so it takes a content strip of its own.
     service.ingest(_message(("alpha",), at=now))
     service.ingest(_message(("alpha", "one"), at=now))
     service.ingest(_message(("alpha", "two"), at=now))
 
-    generator = LinearLayoutGenerator()
-    frames = generator.generate(service, timestamp=now)
-
+    frames = LinearLayoutGenerator().generate(service, timestamp=now)
     alpha = _frame(frames, ("alpha",))
     one = _frame(frames, ("alpha", "one"))
     two = _frame(frames, ("alpha", "two"))
 
-    # alpha takes top portion (20%), children split remaining 80% vertically
-    assert alpha.rect.width == 1.0  # Full width
-    assert one.rect.width == 1.0  # Full width within parent
-    assert two.rect.width == 1.0  # Full width within parent
+    # Every rect stays inside the unit canvas.
+    for r in (alpha.rect, one.rect, two.rect):
+        assert r.x >= 0.0 and r.y >= 0.0
+        assert r.x + r.width <= 1.0 + 1e-9
+        assert r.y + r.height <= 1.0 + 1e-9
+        assert r.width > 0.0 and r.height > 0.0
 
-    # Children are stacked vertically (same x=0, different y, equal heights)
-    assert alpha.rect.x == one.rect.x == two.rect.x == 0.0
-    # Alpha's y=0 (top), children start below alpha
-    assert one.rect.y > alpha.rect.y
-    assert two.rect.y > one.rect.y
-    # Both children should have equal height (stacked vertically)
-    assert round(one.rect.height, 2) == round(two.rect.height, 2)
+    # The two siblings do not overlap (separated on at least one axis).
+    sep_x = one.rect.x + one.rect.width <= two.rect.x + 1e-9 or \
+            two.rect.x + two.rect.width <= one.rect.x + 1e-9
+    sep_y = one.rect.y + one.rect.height <= two.rect.y + 1e-9 or \
+            two.rect.y + two.rect.height <= one.rect.y + 1e-9
+    assert sep_x or sep_y
+
+    # Siblings share the split evenly (equal extent on the divided axis).
+    if sep_x:
+        assert round(one.rect.width, 2) == round(two.rect.width, 2)
+    else:
+        assert round(one.rect.height, 2) == round(two.rect.height, 2)

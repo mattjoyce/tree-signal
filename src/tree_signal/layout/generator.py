@@ -168,8 +168,13 @@ class LinearLayoutGenerator:
         if not child_list:
             return
 
-        # Alternate between horizontal and vertical splits based on depth
-        horizontal = (depth % 2) == 0
+        # Split along the rectangle's longer axis so tiles stay roughly
+        # square. Rigid depth-parity alternation degenerates to a 1-D stack
+        # whenever every multi-child level lands on the same parity (e.g.
+        # pentest → run → slot → {1..5}: all branching at odd depth = all
+        # vertical). Aspect-driven splitting produces a real 2-D treemap
+        # regardless of tree shape.
+        horizontal = children_rect.width >= children_rect.height
 
         self._layout_children(
             child_list, children_rect, horizontal, depth, frames, timestamp, tree
